@@ -1,4 +1,5 @@
 # PRIDE: Planetary Radio-Interferometry Delay Estimator
+[![Tests](https://github.com/alfonsoSR/pride/actions/workflows/tests.yaml/badge.svg)](https://github.com/alfonsoSR/pride/actions/workflows/tests.yaml)
 
 ## Installation
 
