@@ -1,0 +1,42 @@
+#  Station alternative names  v0.1 2013.10.28
+#
+#  Contains alternative station names which can encounter in the world of VLBI
+#
+#  The file has X entries.
+#
+#  Format description
+#
+#  1: 8   A8     station name used within vint
+# 11:..  NxA20  alternative name(s)
+#
+#
+# Modifications:
+#
+# who        when        what
+#
+# D. Duev    2013.10.28  Created
+#
+GBT-VLBA: [GBT_VLBA, VLBA_GBT]
+SC-VLBA: [VLBA_SC, SC_VLBA]
+HN-VLBA: [VLBA_HN, HN_VLBA]
+MK-VLBA: [VLBA_MK, MK_VLBA]
+NL-VLBA: [VLBA_NL, NL_VLBA]
+FD-VLBA: [VLBA_FD, FD_VLBA]
+LA-VLBA: [VLBA_LA, LA_VLBA]
+KP-VLBA: [VLBA_KP, KP_VLBA]
+PIETOWN: [VLBA_PT, PT_VLBA, PT-VLBA]
+BR-VLBA: [VLBA_BR, BR_VLBA]
+OV-VLBA: [VLBA_OV, OV_VLBA]
+HARTRAO: [HART]
+HOBART26: [HOB_MK5]
+RA: [SRT]
+SESHAN25: [SHANGHAI]
+WARK12M: [WARK]
+ATCA-104: [ATCA]
+TIDBIN64: [DSS43]
+PUSHCHIN: [PUSH]
+NWNORCIA: [DSS32]
+ONSALA85: [ONS_DBBC]
+GBTS: [NRAO_140]
+JIAMUSI: [JIAMU]
+YAMAGU32: [YAMAGUCH]

@@ -1,0 +1,61 @@
+Experiment:
+  # VEX file [Path (relative or absolute)]
+  vex: GR035.vix
+  # Name of the near field target
+  target: mex
+  # Phase center (station name)
+  phase_center: GEOCENTR
+  # Ignore scans from the following stations (two-letter codes)
+  ignore_stations: []
+  # Output directory
+  output_directory: output-gr035
+  # Reference observation frequency [Hz] (TO BE REMOVED IN THE FUTURE)
+  # reference_frequency: 8332000000.0
+  # # Step size used when discretizing scans
+  # scan_step: 10
+  # # Force use of user-defined scan step
+  # force_scan_step: false
+
+Resources:
+  # Directory containing the SPICE kernels
+  ephemerides: "spice"
+
+Displacements:
+  # Solid Earth tides caused by the Sun and the Moon
+  SolidTide: true
+  # Ocean loading
+  OceanLoading: true
+  # Rotational deformation due to pole tides
+  PoleTide: true
+
+Delays:
+  Tropospheric:
+      # Calculate tropospheric delay
+      calculate: true
+      # Tropospheric model: ["petrov", "vienna"]
+      model: vienna
+      # Allow backup model if primary not available (e.g. use Vienna if no Petrov)
+      backup: false
+      backup_model: petrov
+      # Directory with tropospheric data files
+      data: "data/tropospheric"
+
+  Ionospheric:
+      # Calculate ionospheric delay
+      calculate: true
+      # Directory with ionospheric data files
+      data: "data/ionospheric"
+
+  Geometric:
+      # Calculate geometric delay
+      calculate: true
+      # Directory with data files for geometric delay
+      data: "spice"
+
+  AntennaDelays:
+      # Calculate delays due to geometry and deformation of antennas
+      calculate: true
+      # Directory with data files for thermal deformation
+      data: "data/tropospheric" # We obtain info from site-specific V3GR
+      # Fallback to default configuration if no site-specific data is available
+      fallback: true
