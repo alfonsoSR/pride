@@ -21,13 +21,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
           allow-prereleases: true
 
-      - name: Install fortran compiler for macOS
+      - name: Set fortran compiler on macOS
         if: startsWith(matrix.os, 'macos')
         run: |
-          brew install gfortran
+          export FC=gfortran
 
       - name: Install package
-        run: python -m pip install .[test]
+        run: python -m pip install .[test] -v
 
       - name: Test package
         run: python -m pytest
