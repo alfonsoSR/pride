@@ -24,7 +24,7 @@ jobs:
       - name: Set fortran compiler on macOS
         if: startsWith(matrix.os, 'macos')
         run: |
-          export FC=gfortran
+          echo "${which gfortran)}"
 
       - name: Install package
         run: python -m pip install .[test] -v
