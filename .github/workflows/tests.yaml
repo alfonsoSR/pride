@@ -24,8 +24,9 @@ jobs:
       - name: Set fortran compiler on macOS
         if: startsWith(matrix.os, 'macos')
         run: |
-          brew info gfortran
+          brew_path=$(brew --cellar)
           echo "HOMEBREW: $(which brew)"
+          echo "CELLAR: $brew_path"
           echo "FORTRAN: $(which gcc)"
 
       # - name: Install package
