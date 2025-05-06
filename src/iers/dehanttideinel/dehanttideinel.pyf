@@ -1,0 +1,21 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module dehanttideinel ! in
+    interface  ! in :dehanttideinel
+        subroutine dehanttideinel(xsta,yr,month,day,fhr,xsun,xmon,dxtide) ! in :dehanttideinel:DEHANTTIDEINEL.F
+            double precision dimension(3), intent(in) :: xsta
+            integer, intent(in) :: yr
+            integer, intent(in) :: month
+            integer, intent(in) :: day
+            double precision, intent(in) :: fhr
+            double precision dimension(3), intent(in) :: xsun
+            double precision dimension(3), intent(in) :: xmon
+            double precision dimension(3), intent(out) :: dxtide
+        end subroutine dehanttideinel
+    end interface
+end python module dehanttideinel
+
+! This file was auto-generated with f2py (version:2.2.0).
+! See:
+! https://web.archive.org/web/20140822061353/http://cens.ioc.ee/projects/f2py2e

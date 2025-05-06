@@ -1,0 +1,8 @@
+# Ramp table for ESA's Mars Express spacecraft
+#
+# column 1-2: ramp interval start time t_start, TDB
+# column 3-4: ramp interval stop time t_stop, TDB
+# column   5: uplink frequency at t_start, Hz
+# column   6: uplink frequency TDB derivative, Hz/s
+#
+# 2013-12-27 09:13:17.434000  2013-12-27 13:07:04.970000  7.1665457709977217e+09   0.0000000000000000e+00

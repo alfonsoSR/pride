@@ -1,0 +1,12 @@
+*cache*
+*egg-info*
+.DS_Store
+
+# To be removed in the future
+doc
+src/pride/displacements/old.py
+dev
+
+# Compiled extension modules
+*.so
+_version.py

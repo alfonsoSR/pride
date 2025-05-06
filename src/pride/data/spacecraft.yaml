@@ -1,0 +1,34 @@
+mex:
+  names: [MEX, MARS EXPRESS, MARS-EXPRESS]
+  short_name: mex
+  api: ESA
+  meta_kernel: mex_ops.tm
+  downlink_frequency: 8420.750
+
+vex:
+  names: [VEX, VENUS-EXPRESS]
+  short_name: vex
+  api: ESA
+  meta_kernel: vex_ops.tm
+  downlink_frequency: 8400. # default
+
+bepicolombo:
+  names: [MERCURY PLANETARY ORBITER, MPO, BEPICOLOMBO MPO, BC, BEPICOLOMBO]
+  short_name: bepicolombo
+  api: ESA
+  meta_kernel: bc_ops.tm
+  downlink_frequency: 8400. # default
+
+juice:
+  names: [JUPITER ICY MOONS EXPLORER, JUICE]
+  short_name: juice
+  api: ESA
+  meta_kernel: juice_crema_5_0b23_1.tm
+  downlink_frequency: 8400. # default
+
+exomars:
+  names: ["TRACE GAS ORBITER", "TGO", "EXOMARS 2016 TGO", "EM16", "EXOMARS", "ExoMars2016"]
+  short_name: exomars
+  api: ESA
+  meta_kernel: em16_ops.tm
+  downlink_frequency: 8400. # default

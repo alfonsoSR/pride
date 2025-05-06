@@ -1,0 +1,42 @@
+Catalogues:
+  # Station positions (compatible with calc and vtd)
+  station_positions: glo.sit
+  # Station velocities (compatible with calc and vtd)
+  station_velocities: glo.vel
+  # Thermal deformation and axis data for antennas
+  antenna_parameters: antenna-info.txt
+  # Ocean loading parameters for stations
+  ocean_loading: tpxo72.blq
+  # Format of frequency ramping files
+  frequency_ramping: frequency_ramping/ramp
+Configuration:
+  # Celestial bodies to consider for relativistic LT corrections
+  lt_correction_bodies: [
+    sun,
+    mercury,
+    venus,
+    earth,
+    moon,
+    mars,
+    jupiter_barycenter,
+    saturn_barycenter,
+    uranus_barycenter,
+    neptune_barycenter
+  ]
+  # EOP Bulletin [A, B]
+  eop_bulletin: "B"
+  # Format used to specify dates in VEX files
+  vex_date_format: "%Yy%jd%Hh%Mm%Ss"
+  # Step size and minimum number of observations for scan discretization
+  default_scan_step: 10
+  min_obs_per_scan: 10
+  # Minimum step size must be > 1 to avoid repetitions when calculating velocities
+  min_scan_step: 2
+  # Maximum number of iterations for relativistic LT corrections
+  lt_max_iterations: 6
+  # Target precision for relativistic LT corrections
+  lt_precision: 1e-15
+  # Turnaround ratio for three-way communication link
+  # NOTE: From DSN Telecommunications Link Design Handbook (201, Rev. B)
+  # NOTE: This value is only valid when uplink and downlink are in X band
+  tr_ratio: 1.1748998664886516
