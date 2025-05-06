@@ -6,13 +6,12 @@ on:
 
 jobs:
   run_tests:
-    runs-on: ${{ matrix.os }}
+    runs-on: [ubuntu-latest, macos-latest, macos-13]
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, macos-13, macos-14]
         python-version: [3.11, 3.12, 3.13]
-    name: Tests for Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    name: "${{ runner.os }} ${{ runner.arch }} :: Python ${{ matrix.python-version }}"
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python ${{ matrix.python-version }}
@@ -22,13 +21,12 @@ jobs:
           allow-prereleases: true
 
       - name: Set fortran compiler on macOS
-        if: startsWith(matrix.os, 'macos')
+        if: runner.os == 'macOS'
         run: |
           echo "PATH=$(brew --prefix gfortran)/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install package
         run: |
-          echo "FORTRAN: $(which gfortran)"
           python -m pip install .[test] -v
 
       - name: Test package
