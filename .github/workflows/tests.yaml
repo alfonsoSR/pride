@@ -10,8 +10,9 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
+        os: [ubuntu-latest, macos-latest, macos-13]
         python-version: [3.11, 3.12, 3.13]
-    name: "${{ runner.os }} ${{ runner.arch }} :: Python ${{ matrix.python-version }}"
+    name: "${{ matrix.os }} :: Python ${{ matrix.python-version }}"
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python ${{ matrix.python-version }}
