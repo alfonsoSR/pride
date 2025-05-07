@@ -4,8 +4,8 @@
 ## Installation
 
 ```
-git clone https://github.com/alfonsoSR/pypride.git
-cd pypride
+git clone https://github.com/alfonsoSR/pride.git
+cd pride
 pip3 install .
 ```
 
