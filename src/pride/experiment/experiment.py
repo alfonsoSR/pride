@@ -5,6 +5,7 @@ import spiceypy as spice
 from ..io import (
     Setup,
     Vex,
+    VexContent,
     load_catalog,
     VEX_DATE_FORMAT,
     get_target_information,
@@ -34,27 +35,17 @@ class Experiment:
 
     def __init__(self, setup: str | Path) -> None:
 
-        # Parse VEX and configuration files
-        self.setup = Setup(str(setup))
-        self.vex = Vex(str(self.setup.general["vex"]))
+        # Load setup and VEX file
+        self.setup, self.vex = self.__load_setup_and_vex(setup)
 
-        # Experiment name
-        self.name = self.vex["GLOBAL"]["EXPER"]
+        # Read basic metadata from VEX file
+        self.name, self.initial_epoch, self.final_epoch = (
+            self.__get_experiment_metadata()
+        )
         log.info(f"Initializing {self.name} experiment")
 
-        # Initial and final epochs
-        self.initial_epoch = time.Time.strptime(
-            self.vex["EXPER"][self.name]["exper_nominal_start"],
-            self.setup.internal["vex_date_format"],
-            scale="utc",
-        )
-        self.final_epoch = time.Time.strptime(
-            self.vex["EXPER"][self.name]["exper_nominal_stop"],
-            self.setup.internal["vex_date_format"],
-            scale="utc",
-        )
-
         # Observation modes
+        # TODO: How is this information used?
         self.modes: dict[str, "ObservationMode"] = {
             mode: ObservationMode(
                 mode, self.vex["MODE"][mode].getall("FREQ"), self.vex["FREQ"]
@@ -63,6 +54,7 @@ class Experiment:
         }
 
         # Clock offsets
+        # TODO: How is this information used?
         self.clock_offsets = self.load_clock_offsets()
 
         # EOPs: For transformations between ITRF and ICRF
@@ -94,6 +86,68 @@ class Experiment:
         self.delay_models = self.initialize_delay_models()
 
         return None
+
+    def __load_setup_and_vex(
+        self, _setup: str | Path
+    ) -> tuple[Setup, "VexContent"]:
+        """Load information from configuration and VEX files
+
+        Information from the configuration file is loaded into a `Setup` object,
+        and the VEX file is parsed for easy access to its contents.
+
+        :param setup: Path to the configuration file
+        :return Setup: Setup object containing the configuration
+        :return VexContent: VEX object containing the parsed VEX file
+        """
+
+        # Load setup from configuration file
+        _setup_path = Path(_setup).absolute()
+        if not _setup_path.is_file():
+            log.error(
+                f"Failed to initialize {self.name} experiment: "
+                f"Configuration file {_setup_path} not found"
+            )
+            exit(1)
+        setup = Setup(str(_setup_path))
+
+        # Parse VEX file
+        _vex_path = _setup_path.parent / setup.general["vex"]
+        if not _vex_path.is_file():
+            log.error(
+                f"Failed to initialize {self.name} experiment: "
+                f"VEX file {_vex_path} not found"
+            )
+            exit(1)
+        vex = Vex(str(_vex_path))
+
+        return setup, vex
+
+    def __get_experiment_metadata(self) -> tuple[str, "time.Time", "time.Time"]:
+        """Retrieve experiment metadata from VEX
+
+        Reads the experiment name, and the initial and final epochs from the VEX file.
+
+        :return name: Name of the experiment
+        :return initial_epoch: Initial epoch of the experiment (UTC)
+        :return final_epoch: Final epoch of the experiment (UTC)
+        """
+
+        # Experiment name
+        name = self.vex["GLOBAL"]["EXPER"]
+
+        # Initial and final epochs
+        initial_epoch = time.Time.strptime(
+            self.vex["EXPER"][name]["exper_nominal_start"],
+            self.setup.internal["vex_date_format"],
+            scale="utc",
+        )
+        final_epoch = time.Time.strptime(
+            self.vex["EXPER"][name]["exper_nominal_stop"],
+            self.setup.internal["vex_date_format"],
+            scale="utc",
+        )
+
+        return name, initial_epoch, final_epoch
 
     def load_sources(self) -> dict[str, "Source"]:
         """Load sources from VEX file
