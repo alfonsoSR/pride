@@ -12,7 +12,6 @@ from scipy import interpolate
 
 from ..types import Antenna
 from ..external import vienna
-from nastro import plots as ng
 import spiceypy as spice
 from ..experiment.source import FarFieldSource, NearFieldSource
 from ..constants import J2000, L_C
