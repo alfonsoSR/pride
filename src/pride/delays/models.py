@@ -1,5 +1,5 @@
 from .core import Delay
-from ..io import get_target_information, ESA_SPICE, NASA_SPICE, internal_file
+from .. import io
 from typing import TYPE_CHECKING, Any, Literal
 from ..logger import log
 import requests
@@ -32,77 +32,17 @@ class Geometric(Delay):
 
     def ensure_resources(self) -> None:
 
-        # Find kernels for target
-        target = get_target_information(self.exp.setup.general["target"])
-        kernel_path: "Path" = self.config["data"] / target["short_name"]
-        metak_path: "Path" = kernel_path / "metak.tm"
-        kernel_source = ESA_SPICE if target["api"] == "ESA" else NASA_SPICE
-        kernel_source += f"/{target['names'][-1]}/kernels"
-
-        # Create kernel directory if not present
-        if not kernel_path.exists():
-            kernel_path.mkdir(parents=True)
-            log.info(f"Created kernel directory for {target['names'][-1]}")
+        # Initialize SPICE kernels manager
+        kernel_manager = io.SpiceKernelManager(
+            mission=self.exp.setup.general["target"],
+            kernels_folder=self.config["data"],
+        )
 
         # Download metakernel if not present
-        if not metak_path.exists():
-            log.info(f"Downloading metakernel for {target['names'][-1]}")
-            metak_found: bool = False
-            log.debug(
-                "Downloading: "
-                f"{kernel_source}/mk/{target['meta_kernel'].upper()}"
-            )
-            response = requests.get(
-                f"{kernel_source}/mk/{target['meta_kernel'].upper()}"
-            )
-            if response.ok:
-                metak_found = True
-                metak_content = response.content.decode("utf-8").splitlines()
-                with metak_path.open("w") as f:
-                    for line in metak_content:
-                        if "PATH_VALUES" in line:
-                            line = line.replace("..", str(kernel_path))
-                        f.write(f"{line}\n")
-            if not metak_found:
-                log.error(
-                    "Failed to initialize geometric delay: "
-                    f"Metakernel not found for {target['names'][-1]}"
-                )
-                exit(1)
+        metakernel = kernel_manager.ensure_metakernel()
 
-        # Read list of kernels from metakernel
-        klist: list[str] = []
-        with metak_path.open() as metak:
-            content = iter([line.strip() for line in metak.readlines()])
-            for line in content:
-                if "KERNELS_TO_LOAD" in line:
-                    line = next(content)
-                    while ")" not in line:
-                        if len(line) > 0:
-                            klist.append(line.replace("$KERNELS/", "")[1:-1])
-                        line = next(content)
-                    if line.split(")")[0] != "":
-                        klist.append(
-                            line.split(")")[0].replace("$KERNELS/", "")[1:-1]
-                        )
-                    break
-
-        # Ensure that all kernels are present
-        for kernel in klist:
-            if not (kernel_path / kernel).exists():
-                log.info(f"Downloading {kernel_source}/{kernel}")
-                response = requests.get(f"{kernel_source}/{kernel}")
-                if response.ok:
-                    (kernel_path / kernel).parent.mkdir(
-                        parents=True, exist_ok=True
-                    )
-                    (kernel_path / kernel).write_bytes(response.content)
-                else:
-                    log.error(
-                        "Failed to initialize geometric delay: "
-                        f"Failed to download {kernel_source}/{kernel}"
-                    )
-                    exit(1)
+        # Download SPICE kernels in the metakernel
+        kernel_manager.ensure_kernels(metakernel)
 
         return None
 
@@ -1068,7 +1008,7 @@ class AntennaDelays(Delay):
 
             # Generate antenna object from thermal deformation data file
             _antenna = Antenna(ivs_name=station.name)
-            with internal_file(
+            with io.internal_file(
                 self.exp.setup.catalogues["antenna_parameters"]
             ).open() as f:
 
