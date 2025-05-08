@@ -48,6 +48,10 @@ class Geometric(Delay):
         if not metak_path.exists():
             log.info(f"Downloading metakernel for {target['names'][-1]}")
             metak_found: bool = False
+            log.debug(
+                "Downloading: "
+                f"{kernel_source}/mk/{target['meta_kernel'].upper()}"
+            )
             response = requests.get(
                 f"{kernel_source}/mk/{target['meta_kernel'].upper()}"
             )

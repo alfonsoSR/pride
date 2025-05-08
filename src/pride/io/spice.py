@@ -1,6 +1,7 @@
 from .resources import load_catalog
 from typing import Any
 from ..logger import log
+from pathlib import Path
 
 ESA_SPICE = "https://spiftp.esac.esa.int/data/SPICE"
 NASA_SPICE = "https://naif.jpl.nasa.gov/pub/naif"

@@ -10,3 +10,4 @@ dev
 # Compiled extension modules
 *.so
 _version.py
+build
