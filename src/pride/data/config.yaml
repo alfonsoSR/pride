@@ -29,7 +29,7 @@ Configuration:
   vex_date_format: "%Yy%jd%Hh%Mm%Ss"
   # Step size and minimum number of observations for scan discretization
   default_scan_step: 10
-  min_obs_per_scan: 10
+  min_obs_per_scan: 11
   # Minimum step size must be > 1 to avoid repetitions when calculating velocities
   min_scan_step: 2
   # Maximum number of iterations for relativistic LT corrections
