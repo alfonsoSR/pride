@@ -1,7 +1,7 @@
 from pathlib import Path
 import struct
 import numpy as np
-from ..logger import log
+from ...logger import log
 from dataclasses import dataclass
 
 

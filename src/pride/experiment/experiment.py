@@ -2,12 +2,10 @@ from typing import TYPE_CHECKING, Generator, Any
 from pathlib import Path
 from contextlib import contextmanager
 import spiceypy as spice
+from .. import io
 from ..io import (
     Setup,
-    Vex,
-    VexContent,
     load_catalog,
-    VEX_DATE_FORMAT,
     get_target_information,
     DelFile,
 )
@@ -36,27 +34,32 @@ class Experiment:
 
     def __init__(self, setup: str | Path) -> None:
 
-        # Load setup and VEX file
-        self.setup, self.vex = self.__load_setup_and_vex(setup)
+        # Load setup from configuration file
+        _setup_path = Path(setup).absolute()
+        if not _setup_path.is_file():
+            log.error(
+                f"Failed to initialize {self.name} experiment: "
+                f"Configuration file {_setup_path} not found"
+            )
+            exit(1)
+        self.setup = Setup(str(_setup_path))
 
-        # Read basic metadata from VEX file
-        self.name, self.initial_epoch, self.final_epoch = (
-            self.__get_experiment_metadata()
-        )
+        # Generate interface to VEX file
+        _vex_path = _setup_path.parent / self.setup.general["vex"]
+        self.__vex = io.Vex(_vex_path)
+
+        # Experiment metadata
+        self.name = self.__vex.experiment_name
+        self.initial_epoch = self.__vex.experiment_start
+        self.final_epoch = self.__vex.experiment_stop
         log.info(f"Initializing {self.name} experiment")
 
-        # Observation modes
-        # TODO: How is this information used?
-        self.modes: dict[str, "ObservationMode"] = {
-            mode: ObservationMode(
-                mode, self.vex["MODE"][mode].getall("FREQ"), self.vex["FREQ"]
-            )
-            for mode in self.vex["MODE"]
-        }
+        # Load observation modes from VEX file
+        self.modes = self.__vex.load_observation_modes()
 
-        # Clock offsets
-        # TODO: How is this information used?
-        self.clock_offsets = self.load_clock_offsets()
+        # Load clock parameters from VEX file
+        self.clock_parameters = self.__vex.load_clock_parameters()
+        self.clock_offsets = self.clock_parameters  # Backwards compatibility
 
         # EOPs: For transformations between ITRF and ICRF
         self.eops = EOP.from_experiment(self)
@@ -65,7 +68,7 @@ class Experiment:
         self.target = get_target_information(self.setup.general["target"])
 
         # Load sources
-        self.sources = self.load_sources()
+        self.sources = self.load_sources(self.__vex)
 
         # Define phase center
         if self.setup.general["phase_center"] != "GEOCENTR":
@@ -79,7 +82,9 @@ class Experiment:
         )
 
         # Initialize baselines
-        self.baselines = self.initialize_baselines()
+        self.baselines = self.initialize_baselines(
+            self.__vex, self.setup.general["ignore_stations"]
+        )
 
         # Initialize delay and displacement models
         self.requires_spice = False
@@ -88,115 +93,18 @@ class Experiment:
 
         return None
 
-    def __load_setup_and_vex(
-        self, _setup: str | Path
-    ) -> tuple[Setup, "VexContent"]:
-        """Load information from configuration and VEX files
-
-        Information from the configuration file is loaded into a `Setup` object,
-        and the VEX file is parsed for easy access to its contents.
-
-        :param setup: Path to the configuration file
-        :return Setup: Setup object containing the configuration
-        :return VexContent: VEX object containing the parsed VEX file
-        """
-
-        # Load setup from configuration file
-        _setup_path = Path(_setup).absolute()
-        if not _setup_path.is_file():
-            log.error(
-                f"Failed to initialize {self.name} experiment: "
-                f"Configuration file {_setup_path} not found"
-            )
-            exit(1)
-        setup = Setup(str(_setup_path))
-
-        # Parse VEX file
-        _vex_path = _setup_path.parent / setup.general["vex"]
-        if not _vex_path.is_file():
-            log.error(
-                f"Failed to initialize {self.name} experiment: "
-                f"VEX file {_vex_path} not found"
-            )
-            exit(1)
-        vex = Vex(str(_vex_path))
-
-        return setup, vex
-
-    def __get_experiment_metadata(self) -> tuple[str, "time.Time", "time.Time"]:
-        """Retrieve experiment metadata from VEX
-
-        Reads the experiment name, and the initial and final epochs from the VEX file.
-
-        :return name: Name of the experiment
-        :return initial_epoch: Initial epoch of the experiment (UTC)
-        :return final_epoch: Final epoch of the experiment (UTC)
-        """
-
-        # Experiment name
-        name = self.vex["GLOBAL"]["EXPER"]
-
-        # Initial and final epochs
-        initial_epoch = time.Time.strptime(
-            self.vex["EXPER"][name]["exper_nominal_start"],
-            self.setup.internal["vex_date_format"],
-            scale="utc",
-        )
-        final_epoch = time.Time.strptime(
-            self.vex["EXPER"][name]["exper_nominal_stop"],
-            self.setup.internal["vex_date_format"],
-            scale="utc",
-        )
-
-        return name, initial_epoch, final_epoch
-
-    def load_sources(self) -> dict[str, "Source"]:
+    def load_sources(self, vex: "io.Vex") -> dict[str, "Source"]:
         """Load sources from VEX file
 
         Parses the SOURCE section of the VEX file and retrieves the name, type and coordinates of all the sources involved in the experiment. NearFieldSource and FarFieldSource objects are initialized for each source based on the 'source_type' read from the VEX, with the program raising an error if this attribute is not set.
 
+        :param vex: Interface to VEX file
         :return: Dictionary with source name as key and Source object as value.
         """
 
         sources: dict[str, "Source"] = {}
-        # nearfield_source_ra: list[str] = []
-        # nearfield_source_dec: list[str] = []
-        # nearfield_source_frame: list[str] = []
 
-        # # Classify sources
-        # for name, source_info in self.vex["SOURCE"].items():
-
-        #     # Ensure type information is available in VEX file
-        #     if "source_type" not in source_info:
-        #         log.error(
-        #             f"Failed to generate {name} source: "
-        #             "Type information missing from VEX file"
-        #         )
-        #         exit(1)
-
-        #     match source_info["source_type"]:
-        #         case "calibrator":
-        #             sources[name] = FarFieldSource.from_experiment(name, self)
-        #         case "target":
-        #             nearfield_source_ra.append(source_info["ra"])
-        #             nearfield_source_dec.append(source_info["dec"])
-        #             nearfield_source_frame.append(
-        #                 source_info["ref_coord_frame"]
-        #             )
-        #         case _:
-        #             log.error(
-        #                 f"Failed to generate {name} source: "
-        #                 f"Invalid type {source_info['source_type']}"
-        #             )
-
-        # # Load near field source
-        # # NOTE: It is assumed that only one spacecraft is observed
-        # for name, source_info in _nearfield_source_data.items():
-
-        #     print(source_info)
-        #     exit(0)
-
-        for name, source_info in self.vex["SOURCE"].items():
+        for name, source_info in vex.experiment_sources.items():
 
             # Ensure type information is available in VEX file
             if "source_type" not in source_info:
@@ -288,133 +196,136 @@ class Experiment:
 
         return _delay_models
 
-    def initialize_baselines(self) -> list["Baseline"]:
+    def collect_observation_bands_and_timestamps(self, vex: "io.Vex") -> tuple[
+        dict[str, dict[str, "Band"]],
+        dict[str, dict[str, list[datetime.datetime]]],
+    ]:
+        """Group scan data into observations
+
+        An Observation object collects all the scans of a source from a given
+        station. This function goes over the SCHED section of the VEX file and
+        groups the scan information per station and source. The output of this
+        function is the input for observation initialization.
+
+        :param vex: Interface to VEX file
+        :return observation_bands: Two-level dictionary containing the band
+        of each observation, indexed by station and source.
+        :return observation_tstamps: Two-level dictionary containing the
+        timestamps of each observation, indexed by station and source.
+        """
+
+        # Initialize output dictionaries
+        observation_bands: dict[str, dict[str, "Band"]] = {}
+        observation_tstamps: dict[str, dict[str, list[datetime.datetime]]] = {}
+
+        # Loop over all scans in the VEX file
+        for scan_id in vex.experiment_scans_ids:
+
+            # Load scan data
+            scan_data = vex.load_single_scan_data(scan_id)
+
+            # If the source is a target, use the target name
+            if scan_data.source_type == "target":
+                scan_data.source_name = self.target["short_name"]
+
+            # Loop over all the stations involved in the scan
+            for station_id, (
+                initial_offset,
+                final_offset,
+            ) in scan_data.offsets_per_station.items():
+
+                # Calculate timestamps for this scan
+                scan_timestamps = utils.discretize_scan(
+                    scan_data.initial_epoch,
+                    initial_offset,
+                    final_offset,
+                    scan_id,
+                )
+
+                # If station is not in dictionaries, add it
+                if station_id not in observation_bands:
+                    observation_bands[station_id] = {}
+                    observation_tstamps[station_id] = {}
+
+                # Get observation band for this station
+                band: "Band" = self.modes[
+                    scan_data.observation_mode
+                ].get_station_band(station_id)
+
+                # Add observation data to dictionaries
+                source = scan_data.source_name  # To make the code more readable
+                if source not in observation_bands[station_id]:
+                    observation_bands[station_id][source] = band
+                    observation_tstamps[station_id][source] = scan_timestamps
+                else:
+                    assert observation_bands[station_id][source] == band
+                    observation_tstamps[station_id][source] += scan_timestamps
+
+        return observation_bands, observation_tstamps
+
+    def initialize_baselines(
+        self, vex: "io.Vex", ignored_stations: list[str]
+    ) -> list["Baseline"]:
         """Initialize baselines
 
-        Parses the STATION section of the VEX file to identify all the observatories potentially involved in the experiment. Checks the names of the antennas against a station catalog and, if necessary, modifies them to ensure that they match the ID used in the external data files of the delay and displacement models. Each station is then used to initialize a Baseline object using the 'phase_center' attribute of the experiment class.
+        The function creates an empty Baseline object for each station involved
+        in the experiment, and then populates them with all the observations
+        performed from that station.
 
-        The program then parses the SCHED section of the VEX file to get the stations, observation mode, source and time window of each scan. The time windows of the scans are discretized according to the step size, and the limits for the number of time stamps specified in the internal configuration file; and then groupped per station and source. This information is then used to initialize Observation objects, which are saved in the 'observations' attribute of each baseline.
+        Information about observations is obtained by grouping the data of the
+        scans listed in the VEX file per station-source pair. Check the
+        __collect_observation_bands_and_timestamps function for more details.
 
-        :return: List of baseline objects equipped with observations.
+        :param vex: Interface to VEX file
+        :param ignored_stations: List of stations to ignore
+        :return baselines: List of Baseline objects populated with observations.
         """
 
         log.info("Initializing baselines")
 
-        # Load experiment stations
-        _experiment_stations = {
-            sta: self.vex["STATION"][sta]["ANTENNA"]
-            for sta in self.vex["STATION"]
-            if sta not in self.setup.general["ignore_stations"]
-        }
+        # Load station IDs and names from VEX file
+        stations_dictionary = vex.load_station_ids_and_names(ignored_stations)
 
-        # Load station catalog
-        _station_catalog = load_catalog("station_names.yaml")
-
-        # Ensure that all the stations have valid names
-        for id, exp_sta in _experiment_stations.items():
-            for sta_name, sta_alternatives in _station_catalog.items():
-                if exp_sta in sta_alternatives:
-                    _experiment_stations[id] = sta_name
-                    break
-
-        # Define baselines
-        _ids = reversed(list(_experiment_stations.keys()))
-        _names = reversed(list(_experiment_stations.values()))
-        _baselines: dict[str, "Baseline"] = {
-            k: Baseline(self.phase_center, Station.from_experiment(v, k, self))
-            for k, v in reversed(dict(zip(_ids, _names)).items())
-        }
-
-        # Load data about observations
-        observation_bands: dict[str, dict[str, "Band"]] = {}
-        observation_tstamps: dict[str, dict[str, list[datetime.datetime]]] = {}
-        for scan_id, scan_data in self.vex["SCHED"].items():
-
-            # Metadata
-            scan_stations = scan_data.getall("station")
-            base_start = datetime.datetime.strptime(
-                scan_data["start"], self.setup.internal["vex_date_format"]
+        # Initialize dictionary of empty baselines (without observations)
+        log.info("Initializing empty baselines")
+        baselines_dictionary: dict[str, "Baseline"] = {
+            station_id: Baseline(
+                center=self.phase_center,
+                station=Station.from_experiment(station_name, station_id, self),
             )
-            mode = self.modes[scan_data["mode"]]
-            if len(scan_data.getall("source")) > 1:
-                raise NotImplementedError(
-                    f"Scan {scan_id} has multiple sources"
-                )
-            source = scan_data.getall("source")[0]
+            for station_id, station_name in stations_dictionary.items()
+        }
 
-            # Ensure unique name for all near field sources
-            source_type = self.vex["SOURCE"][source]["source_type"]
-            if source_type == "target":
-                source = self.target["short_name"]
-
-            for station_data in scan_stations:
-
-                # Retrieve station code and offsets of observation window
-                _station_code, _dt_start, _dt_end = station_data[:3]
-                if _station_code in self.setup.general["ignore_stations"]:
-                    continue
-
-                # Identify baseline containing the station
-                if _station_code not in _baselines:
-                    log.error(
-                        f"Failed to initialize baselines for {self.name} "
-                        "experiment: No baseline includes "
-                        f"station {_station_code}"
-                    )
-                    exit(1)
-
-                scan_tstamps = utils.discretize_scan(
-                    base_start,
-                    int(_dt_start.split()[0]),
-                    int(_dt_end.split()[0]),
-                    scan_id,
-                )
-
-                # Update observation data
-                if _station_code not in observation_bands:
-                    observation_bands[_station_code] = {}
-                    observation_tstamps[_station_code] = {}
-
-                band = mode.get_station_band(_station_code)
-                if source not in observation_bands[_station_code]:
-                    observation_bands[_station_code][source] = band
-                    observation_tstamps[_station_code][source] = scan_tstamps
-                else:
-                    assert observation_bands[_station_code][source] == band
-                    observation_tstamps[_station_code][source] += scan_tstamps
+        # Collect observation bands and timestamps
+        observation_bands, observation_tstamps = (
+            self.collect_observation_bands_and_timestamps(vex)
+        )
 
         # Update baselines with observations
         log.info("Updating baselines with observations")
         for baseline_id in observation_bands:
-
-            # Update baselines with observations
             for source_id in observation_bands[baseline_id]:
-                _baselines[baseline_id].add_observation(
-                    Observation.from_experiment(
-                        _baselines[baseline_id],
-                        self.sources[source_id],
-                        observation_bands[baseline_id][source_id],
-                        observation_tstamps[baseline_id][source_id],
-                        self,
-                    )
+
+                # Create observation object
+                _observation = Observation.from_experiment(
+                    baselines_dictionary[baseline_id],
+                    self.sources[source_id],
+                    observation_bands[baseline_id][source_id],
+                    observation_tstamps[baseline_id][source_id],
+                    self,
                 )
 
-        return list(_baselines.values())
+                # Update baseline with observation
+                baselines_dictionary[baseline_id].add_observation(_observation)
+
+        return list(baselines_dictionary.values())
 
     def load_clock_offsets(self):
         """Load clock offset data from VEX"""
 
-        if "CLOCK" not in self.vex:
-            return {}
+        log.warning("load_clock_offsets is deprecated")
 
-        clock: dict[str, tuple[datetime.datetime, float, float]] = {}
-        for station, data in self.vex["CLOCK"].items():
-            _offset, _epoch, _rate = data["clock_early"][1:4]
-            epoch = datetime.datetime.strptime(_epoch, VEX_DATE_FORMAT)
-            offset = float(_offset.split()[0]) * 1e-6
-            rate = float(_rate) * 1e-6
-            clock[station.title()] = (epoch, offset, rate)
-        return clock
+        return self.__vex.load_clock_parameters()
 
     @contextmanager
     def spice_kernels(self) -> Generator:
@@ -438,7 +349,7 @@ class Experiment:
 
         return None
 
-    def save_output(self) -> None:
+    def save_output(self, vex: "io.Vex") -> None:
 
         # Initialize output directory
         outdir = Path(self.setup.general["output_directory"]).resolve()
@@ -461,7 +372,8 @@ class Experiment:
                 observations[(code, observation.source.name)] = observation
 
         # Main loop
-        sorted_scans = sorted([s for s in self.vex["SCHED"]])
+        sorted_scans = sorted([s for s in vex.experiment_scans_ids])
+        # sorted_scans = sorted([s for s in self.vex["SCHED"]])
         for scan_id in sorted_scans:
 
             # IDs of stations involved in scan
