@@ -24,6 +24,7 @@ from .baseline import Baseline
 from .observation import Observation
 import math
 import numpy as np
+from .. import utils
 
 if TYPE_CHECKING:
     from ..displacements.core import Displacement
@@ -362,35 +363,12 @@ class Experiment:
                     )
                     exit(1)
 
-                # Time window of the scan
-                scan_start = base_start + datetime.timedelta(
-                    seconds=int(_dt_start.split()[0])
+                scan_tstamps = utils.discretize_scan(
+                    base_start,
+                    int(_dt_start.split()[0]),
+                    int(_dt_end.split()[0]),
+                    scan_id,
                 )
-                scan_end = base_start + datetime.timedelta(
-                    seconds=int(_dt_end.split()[0])
-                )
-                scan_duration = (scan_end - scan_start).total_seconds()
-
-                # Define step size for scan discretization
-                default_step: float = self.setup.internal["default_scan_step"]
-                min_nobs = self.setup.internal["min_obs_per_scan"]
-                min_step = self.setup.internal["min_scan_step"]
-                _scan_step = scan_duration / min_nobs
-                if _scan_step > default_step:
-                    nobs = math.ceil(scan_duration / default_step)
-                    scan_step = scan_duration / nobs
-                elif min_step <= _scan_step <= default_step:
-                    nobs = math.ceil(scan_duration / _scan_step)
-                    scan_step = scan_duration / nobs
-                else:
-                    nobs = math.floor(scan_duration / min_step)
-                    scan_step = scan_duration / nobs
-                    log.warning(f"Using minimum step size for scan {scan_id}")
-
-                # Discretize scan time window
-                scan_step = datetime.timedelta(seconds=scan_step)
-                scan_tstamps = [scan_start + i * scan_step for i in range(nobs)]
-                scan_tstamps.append(scan_end)
 
                 # Update observation data
                 if _station_code not in observation_bands:
