@@ -36,6 +36,9 @@ test = [
     "pytest"
 ]
 
+[project.scripts]
+pride = "pride.cli:process_experiment"
+
 [tool.scikit-build]
 ninja.version = ">=1.10"
 cmake.version = ">=3.17.2"
