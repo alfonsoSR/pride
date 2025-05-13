@@ -5,6 +5,7 @@ import pytest
 from astropy import time
 from datetime import datetime
 import numpy as np
+from pride.io.vex.interface import ScanData
 
 
 class TestKernelManagement:
@@ -148,9 +149,30 @@ class TestVexInterface:
 
         return None
 
-    def test_load_stations_section(self) -> None:
+    @pytest.mark.parametrize(
+        ["ignored_stations", "expected_stations"],
+        [
+            (None, 29),
+            (["Cd"], 28),
+        ],
+    )
+    def test_load_stations_section(
+        self, ignored_stations: list[str] | None, expected_stations: int
+    ) -> None:
 
         vex = io.Vex(self.vex_file)
+        stations_dictionary = vex.load_station_ids_and_names(ignored_stations)
+
+        # Check for expected number of stations loaded
+        assert len(stations_dictionary) == expected_stations
+
+        # Check that the name of Ww is normalized
+        assert stations_dictionary["Ww"] == "WARK12M"
+
+        # Check that ignored stations are not present
+        if ignored_stations is not None:
+            for station in ignored_stations:
+                assert station not in stations_dictionary
 
         # Check that incorrect VEX with multiple IDs for same station fails
         # The stations also have different names, but they should be normalized
@@ -159,12 +181,55 @@ class TestVexInterface:
         with pytest.raises(SystemExit) as error:
             wrong_vex.load_station_ids_and_names()
 
-        # No stations are ignored
-        all_stations = vex.load_station_ids_and_names()
-        assert len(all_stations) == 29
-        assert all_stations["Ww"] == "WARK12M"
+        return None
 
-        # Some stations are ignored
-        some_stations = vex.load_station_ids_and_names(["Cd"])
-        assert len(some_stations) == 28
-        assert "Cd" not in some_stations
+    @pytest.mark.parametrize(
+        [
+            "scan_id",
+            "source_name",
+            "reference_epoch",
+            "expected_stations",
+            "expected_offsets_Cd",
+        ],
+        [
+            (
+                "No0016",
+                "J1232-0224",
+                datetime(2013, 12, 28, 18, 24, 30),
+                ["Cd", "Hb", "Yg", "Ke", "Ww", "Ym", "T6", "Km", "Ku"],
+                (0, 120),
+            ),
+            (
+                "No0017",
+                "mex",
+                datetime(2013, 12, 28, 18, 27, 00),
+                ["Cd", "Hb", "Yg", "Ke", "Ww", "Ym", "T6", "Km", "Ku"],
+                (0, 120),
+            ),
+        ],
+    )
+    def test_load_scan_from_id(
+        self,
+        scan_id: str,
+        source_name: str,
+        reference_epoch: datetime,
+        expected_stations: list[str],
+        expected_offsets_Cd: tuple[int, int],
+    ) -> None:
+
+        # Load all scan IDs from VEX file
+        vex = io.Vex(self.vex_file)
+
+        # Load scan data from VEX file
+        scan_data = vex.load_single_scan_data(scan_id, "mex")
+        assert isinstance(scan_data, ScanData)
+
+        # Check that the scan metadata is correct
+        assert scan_data.source_name == source_name
+        assert scan_data.initial_epoch == reference_epoch
+        assert list(scan_data.offsets_per_station.keys()) == expected_stations
+
+        # Check that the offsets for Ceduna are correct
+        assert scan_data.offsets_per_station["Cd"] == expected_offsets_Cd
+
+        return None

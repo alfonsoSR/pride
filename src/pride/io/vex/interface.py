@@ -180,9 +180,6 @@ class Vex:
                 alternatives,
             ) in alternative_names_catalog.items():
                 if default_name in alternatives:
-                    print(
-                        f"Using {normalized_name} for {station_id} not {default_name}"
-                    )
                     stations_dictionary[station_id] = normalized_name
                     break
 
@@ -193,17 +190,20 @@ class Vex:
 
         return stations_dictionary
 
-    def load_single_scan_data(self, scan_id: str) -> ScanData:
+    def load_single_scan_data(
+        self, scan_id: str, experiment_target: str
+    ) -> ScanData:
         """Return data about a single scan
 
         Returns a ScanData object with the following information:
         - Source type
-        - Source name
+        - Source name: Uses `experiment_target` for `source_type` = "target"
         - Observation mode
         - Initial epoch for all stations
         - Initial and final time offsets for each station involved
 
         :param scan_id: ID of the scan to load
+        :param experiment_target: Name of the target for the experiment
         :return scan_data: Data structure with information about the scan
         """
 
@@ -227,6 +227,10 @@ class Vex:
             )
             exit(1)
         source_type = self.__content["SOURCE"][source_name]["source_type"]
+
+        # If source type is "target", use the experiment target name
+        if source_type == "target":
+            source_name = experiment_target
 
         # Get observation mode
         observation_mode = scan_data["mode"]

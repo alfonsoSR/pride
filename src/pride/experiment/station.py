@@ -7,7 +7,7 @@ from .. import coordinates as coord
 from scipy import interpolate
 import spiceypy as spice
 from ..constants import J2000
-from ..io import VEX_DATE_FORMAT
+from ..io.vex.interface import VEX_DATE_FORMAT
 from datetime import datetime
 
 if TYPE_CHECKING:
@@ -108,7 +108,7 @@ class Station:
             station.is_uplink = True
 
         # Update with clock information
-        if "CLOCK" not in experiment.vex:
+        if "CLOCK" not in experiment._Experiment__vex._Vex__content:
             log.error(
                 f"Failed to initialize {station.name} station: "
                 "Clock information not found in VEX file"
@@ -116,7 +116,9 @@ class Station:
             exit(1)
 
         id = station.id.upper()
-        _offset, _epoch, _rate = experiment.vex["CLOCK"][id]["clock_early"][1:4]
+        _offset, _epoch, _rate = experiment._Experiment__vex._Vex__content[
+            "CLOCK"
+        ][id]["clock_early"][1:4]
         epoch = datetime.strptime(_epoch, VEX_DATE_FORMAT)
         offset = float(_offset.split()[0]) * 1e-6
         rate = float(_rate) * 1e-6

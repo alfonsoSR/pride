@@ -23,6 +23,7 @@ from .observation import Observation
 import math
 import numpy as np
 from .. import utils
+from ..io.vex.interface import VEX_DATE_FORMAT
 
 if TYPE_CHECKING:
     from ..displacements.core import Displacement
@@ -222,11 +223,9 @@ class Experiment:
         for scan_id in vex.experiment_scans_ids:
 
             # Load scan data
-            scan_data = vex.load_single_scan_data(scan_id)
-
-            # If the source is a target, use the target name
-            if scan_data.source_type == "target":
-                scan_data.source_name = self.target["short_name"]
+            scan_data = vex.load_single_scan_data(
+                scan_id, self.target["short_name"]
+            )
 
             # Loop over all the stations involved in the scan
             for station_id, (
@@ -349,7 +348,8 @@ class Experiment:
 
         return None
 
-    def save_output(self, vex: "io.Vex") -> None:
+    def save_output(self) -> None:
+        log.warning("The save_output method should be refactored!")
 
         # Initialize output directory
         outdir = Path(self.setup.general["output_directory"]).resolve()
@@ -372,26 +372,38 @@ class Experiment:
                 observations[(code, observation.source.name)] = observation
 
         # Main loop
-        sorted_scans = sorted([s for s in vex.experiment_scans_ids])
+        sorted_scans = sorted([s for s in self.__vex.experiment_scans_ids])
         # sorted_scans = sorted([s for s in self.vex["SCHED"]])
         for scan_id in sorted_scans:
 
+            _scan_data = self.__vex.load_single_scan_data(
+                scan_id, self.target["short_name"]
+            )
+
+            _stations = list(_scan_data.offsets_per_station.keys())
+
             # IDs of stations involved in scan
-            scan_data = self.vex["SCHED"][scan_id].getall("station")
+            scan_data = self.__vex._Vex__content["SCHED"][scan_id].getall(
+                "station"
+            )
             scan_stations = [s[0] for s in scan_data]
+            assert scan_stations == _stations  # Sanity check
 
             # VEX-file and internal ID of source
-            _scan_sources = [self.vex["SCHED"][scan_id]["source"]]
+            _scan_sources = [
+                self.__vex._Vex__content["SCHED"][scan_id]["source"]
+            ]
             if len(_scan_sources) != 1:
                 log.error(f"Scan {scan_id} has multiple sources")
                 exit(1)
             scan_source_id = _scan_sources[0]  # ID from VEX file
 
-            _source_data = self.vex["SOURCE"][scan_source_id]
+            _source_data = self.__vex._Vex__content["SOURCE"][scan_source_id]
             if _source_data["source_type"] == "target":
                 scan_source = self.target["short_name"]  # Internal ID
             else:
                 scan_source = scan_source_id  # Internal ID
+            assert scan_source == _scan_data.source_name  # Sanity check
 
             # Loop over stations in scan
             for station_id in scan_stations:
@@ -402,7 +414,8 @@ class Experiment:
 
                 # Initial and final epochs for scan
                 t0 = time.Time.strptime(
-                    self.vex["SCHED"][scan_id]["start"], VEX_DATE_FORMAT
+                    self.__vex._Vex__content["SCHED"][scan_id]["start"],
+                    VEX_DATE_FORMAT,
                 )
                 dt = time.TimeDelta(
                     int(scan_data[0][2].split()[0]), format="sec"

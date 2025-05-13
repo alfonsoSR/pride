@@ -89,7 +89,7 @@ class FarFieldSource(Source):
         source.exp = exp
 
         # Read coordinates from VEX file
-        source_info = exp.vex["SOURCE"][name]
+        source_info = exp._Experiment__vex._Vex__content["SOURCE"][name]
         _coords = coordinates.SkyCoord(
             source_info["ra"], source_info["dec"], frame="icrs"
         )
