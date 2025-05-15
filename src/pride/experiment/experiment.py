@@ -5,14 +5,13 @@ import spiceypy as spice
 from .. import io
 from ..io import (
     Setup,
-    load_catalog,
     get_target_information,
     DelFile,
 )
 from ..logger import log
 from astropy import time
 import datetime
-from ..types import ObservationMode, Band
+from ..types import Band
 from ..coordinates import EOP
 from ..displacements import DISPLACEMENT_MODELS
 from ..delays import DELAY_MODELS
@@ -20,7 +19,6 @@ from .source import Source, NearFieldSource, FarFieldSource
 from .station import Station
 from .baseline import Baseline
 from .observation import Observation
-import math
 import numpy as np
 from .. import utils
 from ..io.vex.interface import VEX_DATE_FORMAT
