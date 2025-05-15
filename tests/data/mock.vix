@@ -1092,7 +1092,7 @@ $SOURCE;
 *
 def J1222+0413;
      source_name = J1222+0413;
-     source_type = calibrator;
+     source_type = invalid;
 *    this source had calibrator code: V
 *    alternate source name: 1219+044
 *    alternate source name: J1222+04
@@ -1104,7 +1104,6 @@ enddef;
 *
 def J1230+1223;
      source_name = J1230+1223;
-     source_type = calibrator;
 *    this source had calibrator code: V
 *    alternate source name: 3C274
 *    alternate source name: 1228+126
@@ -1122,8 +1121,8 @@ def J1232-0224;
 *    this source had calibrator code: V
 *    alternate source name: 1229-021
 *    rfc_2012b Petrov, 2012, unpublished 89 observations
-     ra = 12h32m00.0160120s; dec = -02d24'04.794880"; ref_coord_frame = J2000;
-*    ra = 12h29m25.8994074s; dec = -02d07'31.666814"; ref_coord_frame = B1950;
+*    ra = 12h32m00.0160120s; dec = -02d24'04.794880"; ref_coord_frame = J2000;
+     ra = 12h29m25.8994074s; dec = -02d07'31.666814"; ref_coord_frame = B1950;
 *    ra = 12h32m43.7438260s; dec = -02d28'45.282775"; ref_coord_frame = Date;
 enddef;
 *

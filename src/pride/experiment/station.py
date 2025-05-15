@@ -5,14 +5,11 @@ from astropy import time, coordinates
 import numpy as np
 from .. import coordinates as coord
 from scipy import interpolate
-import spiceypy as spice
-from ..constants import J2000
 from ..io.vex.interface import VEX_DATE_FORMAT
 from datetime import datetime
 
 if TYPE_CHECKING:
     from .experiment import Experiment
-    from .source import NearFieldSource
 
 
 class Station:

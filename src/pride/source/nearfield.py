@@ -1,24 +1,24 @@
 from typing import TYPE_CHECKING
 from astropy import time
-from ...logger import log
+from ..logger import log
 import numpy as np
 import spiceypy as spice
-from ...constants import J2000, L_C
-from ... import io
+from ..constants import J2000, L_C
+from .. import io
 from .core import Source
 
 if TYPE_CHECKING:
-    from ..experiment import Experiment
-    from ..observation import Observation
-    from ..station import Station
+    from ..experiment import Experiment, Observation, Station
 
 
 class NearFieldSource(Source):
 
     def __init__(self, name: str) -> None:
-        print(f"Constructor NearFieldSource: {name}")
+
+        # Basic initialization
         super().__init__(name)
         self.is_nearfield = True
+
         return None
 
     @staticmethod
@@ -55,6 +55,10 @@ class NearFieldSource(Source):
         source.default_frequency = exp.target["downlink_frequency"] * 1e6  # Hz
 
         return source
+
+    def __load_ramping_data(self) -> None:
+
+        return None
 
     def tx_from_rx(self, rx: "time.Time", station: "Station") -> time.Time:
         """Calculate TX epoch from RX epoch at a station"""

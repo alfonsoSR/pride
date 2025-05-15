@@ -1,13 +1,13 @@
 from typing import TYPE_CHECKING, Any
 from astropy import time
-from ...logger import log
+from ..logger import log
 import numpy as np
 from abc import abstractmethod, ABCMeta
 
 
 if TYPE_CHECKING:
     from ..experiment import Experiment
-    from ..observation import Observation
+    from ..experiment.observation import Observation
 
 
 class Source(metaclass=ABCMeta):

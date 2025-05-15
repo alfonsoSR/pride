@@ -15,7 +15,7 @@ from ..types import Band
 from ..coordinates import EOP
 from ..displacements import DISPLACEMENT_MODELS
 from ..delays import DELAY_MODELS
-from .source import Source, NearFieldSource, FarFieldSource
+from ..source import Source, NearFieldSource, FarFieldSource
 from .station import Station
 from .baseline import Baseline
 from .observation import Observation
@@ -103,35 +103,23 @@ class Experiment:
 
         sources: dict[str, "Source"] = {}
 
-        for name, source_info in vex.experiment_sources.items():
+        # Initialize far field sources from VEX file
+        for source_name in vex.experiment_source_names:
 
-            # Ensure type information is available in VEX file
-            if "source_type" not in source_info:
-                log.error(
-                    f"Failed to generate {name} source: "
-                    "Type information missing from VEX file"
+            # Load source data from VEX file
+            source_data = vex.load_source_data(source_name)
+
+            # Initialize FarFieldSource objects for calibrators
+            if source_data.source_type == "calibrator":
+
+                assert source_data.right_ascension is not None  # Sanity
+                assert source_data.declination is not None  # Sanity
+
+                sources[source_name] = FarFieldSource(
+                    source_data.name,
+                    source_data.right_ascension,
+                    source_data.declination,
                 )
-                exit(1)
-
-            # Ensure that coordinates are given in the right frame
-            if source_info["ref_coord_frame"] != "J2000":
-                raise NotImplementedError(
-                    f"Failed to generate {name} source: "
-                    f"Invalid reference frame {source_info['ref_coord_frame']}"
-                )
-
-            # Initialize far field sources
-            match source_info["source_type"]:
-                case "calibrator":
-                    sources[name] = FarFieldSource.from_experiment(self, name)
-                case "target":
-                    pass  # Initialized later
-                case _:
-                    log.error(
-                        f"Failed to generate {name} source: "
-                        f"Invalid type {source_info['source_type']}"
-                    )
-                    exit(1)
 
         # Initialize near field source
         sources[self.target["short_name"]] = NearFieldSource.from_experiment(

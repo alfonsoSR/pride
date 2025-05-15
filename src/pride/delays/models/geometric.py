@@ -6,7 +6,7 @@ from astropy import time
 import numpy as np
 
 import spiceypy as spice
-from ...experiment.source import FarFieldSource, NearFieldSource
+from ...source import FarFieldSource, NearFieldSource
 from ...constants import J2000, L_C
 
 if TYPE_CHECKING:

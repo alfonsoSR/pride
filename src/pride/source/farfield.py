@@ -2,13 +2,12 @@ from typing import TYPE_CHECKING
 from astropy import coordinates, time
 import numpy as np
 import spiceypy as spice
-from ...constants import J2000
+from ..constants import J2000
 from .core import Source
-from ... import io
+from .. import io
 
 if TYPE_CHECKING:
-    from ..experiment import Experiment
-    from ..observation import Observation
+    from ..experiment import Experiment, Observation
 
 
 class FarFieldSource(Source):
@@ -41,6 +40,8 @@ class FarFieldSource(Source):
 
     @staticmethod
     def from_experiment(exp: "Experiment", name: str) -> "Source":
+
+        raise NotImplementedError("This method is deprecated")
 
         # Initialize source
         source = FarFieldSource(name)
