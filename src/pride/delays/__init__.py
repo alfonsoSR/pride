@@ -1,4 +1,4 @@
-from .models import Geometric, Tropospheric, Ionospheric, AntennaDelays
+from .models import Geometric, AntennaDelays, Ionospheric, Tropospheric
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
