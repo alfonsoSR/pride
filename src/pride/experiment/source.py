@@ -5,7 +5,7 @@ import numpy as np
 import spiceypy as spice
 from ..constants import J2000, L_C
 from abc import abstractmethod, ABCMeta
-from ..io import internal_file
+from .. import io
 
 
 if TYPE_CHECKING:
@@ -187,143 +187,29 @@ class NearFieldSource(Source):
 
         # Load ramping data for three-way link
         path_base: str = exp.setup.catalogues["frequency_ramping"]
-        _3way_data = {"t0": [], "t1": [], "f0": [], "df": [], "uplink": []}
-        _3way_source = internal_file(f"{path_base}3w.{source.spice_id}")
-
-        if not _3way_source.exists():
-            log.warning(
-                f"Three-way ramping data not found for {source.spice_id}"
-            )
+        _3way_source = io.internal_file(f"{path_base}3w.{source.spice_id}")
+        _3way_data = io.load_ramping_data(
+            _3way_source, "three-way", (exp.initial_epoch, exp.final_epoch)
+        )
+        if _3way_data is not None:
+            source.three_way_ramping = _3way_data
+            source.has_three_way_ramping = True
         else:
-            with _3way_source.open() as f:
-
-                # Load data from internal file
-                for line in f:
-
-                    # Skip comments and empty lines
-                    content = line.strip().split()
-                    if "#" in line or len(content) == 0:
-                        continue
-
-                    # Filter out data after the end of the experiment
-                    t0_str = "T".join(content[:2])
-                    if time.Time(t0_str) > exp.final_epoch:
-                        break
-
-                    # Read data from line
-                    _3way_data["t0"].append(t0_str)
-                    _3way_data["t1"].append("T".join(content[2:4]))
-                    _3way_data["f0"].append(float(content[4]))
-                    _3way_data["df"].append(float(content[5]))
-                    _3way_data["uplink"].append(content[6])
-
-            # Update attribute
-            if len(_3way_data["t0"]) > 0:
-                source.three_way_ramping = {
-                    "t0": time.Time(_3way_data["t0"]),
-                    "t1": time.Time(_3way_data["t1"]),
-                    "f0": np.array(_3way_data["f0"]),
-                    "df": np.array(_3way_data["df"]),
-                    "uplink": _3way_data["uplink"],
-                }
-                source.has_three_way_ramping = True
-            else:
-                log.warning(
-                    f"Three-way ramping data not found for {source.spice_id}"
-                )
+            log.warning(f"Three-way ramping data not found for {source.name}")
 
         # Load ramping data for one-way link
-        _1way_data = {"t0": [], "t1": [], "f0": [], "df": []}
-        _1way_source = internal_file(f"{path_base}1w.{source.spice_id}")
-
-        if not _1way_source.exists():
-            log.warning(f"One-way ramping data not found for {source.spice_id}")
+        _1way_source = io.internal_file(f"{path_base}1w.{source.spice_id}")
+        _1way_data = io.load_ramping_data(
+            _1way_source, "one-way", (exp.initial_epoch, exp.final_epoch)
+        )
+        if _1way_data is not None:
+            source.one_way_ramping = _1way_data
+            source.has_one_way_ramping = True
         else:
-            with _1way_source.open() as f:
-
-                # Load data from internal file
-                for line in f:
-
-                    # Skip comments and empty lines
-                    content = line.strip().split()
-                    if "#" in line or len(content) == 0:
-                        continue
-
-                    # Filter out data after the end of the experiment
-                    t0_str = "T".join(content[:2])
-                    if time.Time(t0_str) > exp.final_epoch:
-                        break
-
-                    # Read data from line
-                    _1way_data["t0"].append(t0_str)
-                    _1way_data["t1"].append("T".join(content[2:4]))
-                    _1way_data["f0"].append(float(content[4]))
-                    _1way_data["df"].append(float(content[5]))
-
-            # Update attribute
-            if len(_1way_data["f0"]) > 0:
-                source.one_way_ramping = {
-                    "t0": time.Time(_1way_data["t0"]),
-                    "t1": time.Time(_1way_data["t1"]),
-                    "f0": np.array(_1way_data["f0"]),
-                    "df": np.array(_1way_data["df"]),
-                }
-                source.has_one_way_ramping = True
-            else:
-                log.warning(
-                    f"One-way ramping data not found for {source.spice_id}"
-                )
+            log.warning(f"One-way ramping data not found for {source.name}")
 
         # Set default downlink frequency
         source.default_frequency = exp.target["downlink_frequency"] * 1e6  # Hz
-
-        # # Read coordinates from VEX file
-        # _ra: list[str] = []
-        # _dec: list[str] = []
-        # for source_id, source_info in exp.vex["SOURCE"].items():
-
-        #     # Ensure that type information is available
-        #     if "source_type" not in source_info:
-        #         log.error(
-        #             "Failed to initialize near field source: "
-        #             f"Source type not found for {source_id}"
-        #         )
-        #         exit(1)
-
-        #     # Skip if source is not near field
-        #     if source_info["source_type"] != "target":
-        #         continue
-
-        #     # Ensure that reference frame is valid
-        #     if source_info["ref_coord_frame"] != "J2000":
-        #         raise NotImplementedError(
-        #             "Failed to generate near field source: "
-        #             f"Invalid reference frame {source_info['ref_coord_frame']}"
-        #         )
-
-        #     # Append coordinates
-        #     _ra.append(source_info["ra"])
-        #     _dec.append(source_info["dec"])
-
-        # # Combine coordinates and convert to radians
-        # _coords = coordinates.SkyCoord(_ra, _dec, frame="icrs")
-        # source.observed_ra = np.array(
-        #     _coords.ra.to("rad").value,  # type: ignore
-        #     dtype=float,
-        # )
-        # source.observed_dec = np.array(
-        #     _coords.dec.to("rad").value,  # type: ignore
-        #     dtype=float,
-        # )
-
-        # # Calculate pointing vector
-        # source.observed_ks = np.array(
-        #     [
-        #         np.cos(source.observed_ra) * np.cos(source.observed_dec),
-        #         np.sin(source.observed_ra) * np.cos(source.observed_dec),
-        #         np.sin(source.observed_dec),
-        #     ]
-        # )
 
         return source
 
