@@ -161,9 +161,7 @@ class Experiment:
                         "Model not found"
                     )
                     exit(1)
-                displacement_models.append(
-                    DISPLACEMENT_MODELS[displacement](self)
-                )
+                displacement_models.append(DISPLACEMENT_MODELS[displacement]())
                 if DISPLACEMENT_MODELS[displacement].requires_spice:
                     self.requires_spice = True
 

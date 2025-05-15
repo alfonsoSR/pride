@@ -4,7 +4,6 @@ from abc import abstractmethod, ABCMeta
 import numpy as np
 
 if TYPE_CHECKING:
-    from ..experiment.experiment import Experiment
     from astropy import time
 
 
@@ -17,9 +16,8 @@ class Displacement(metaclass=ABCMeta):
     name: str = NotImplemented
     requires_spice: bool = NotImplemented
 
-    def __init__(self, experiment: "Experiment") -> None:
+    def __init__(self) -> None:
 
-        self.exp = experiment
         # self.config: dict[str, Any] = self.exp.setup.displacements[self.name]
         self._resources: dict[str, Any] = {}
         self.resources: dict[str, Any] = {}
