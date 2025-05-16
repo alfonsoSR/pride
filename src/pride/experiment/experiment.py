@@ -3,12 +3,6 @@ from pathlib import Path
 from contextlib import contextmanager
 import spiceypy as spice
 from .. import io
-from ..io import (
-    Setup,
-    load_catalog,
-    get_target_information,
-    DelFile,
-)
 from ..logger import log
 from astropy import time
 import datetime
@@ -20,7 +14,6 @@ from .source import Source, NearFieldSource, FarFieldSource
 from .station import Station
 from .baseline import Baseline
 from .observation import Observation
-import math
 import numpy as np
 from .. import utils
 from ..io.vex.interface import VEX_DATE_FORMAT
@@ -43,7 +36,7 @@ class Experiment:
                 f"Configuration file {_setup_path} not found"
             )
             exit(1)
-        self.setup = Setup(str(_setup_path))
+        self.setup = io.Setup(str(_setup_path))
 
         # Generate interface to VEX file
         _vex_path = _setup_path.parent / self.setup.general["vex"]
@@ -66,7 +59,7 @@ class Experiment:
         self.eops = EOP.from_experiment(self)
 
         # Load target information
-        self.target = get_target_information(self.setup.general["target"])
+        self.target = io.get_target_information(self.setup.general["target"])
 
         # Load sources
         self.sources = self.load_sources(self.__vex)
@@ -355,14 +348,14 @@ class Experiment:
 
         # Output files and observations
         observations: dict[tuple[str, str], "Observation"] = {}
-        output_files: dict[str, "DelFile"] = {}
+        output_files: dict[str, "io.DelFile"] = {}
         for baseline in self.baselines:
 
             # Station code
             code = baseline.station.id.title()
 
             # Initialize output file for observation
-            output_files[code] = DelFile(outdir / f"{self.name}_{code}.del")
+            output_files[code] = io.DelFile(outdir / f"{self.name}_{code}.del")
             output_files[code].create_file(code)
 
             # Add observations to dictionary

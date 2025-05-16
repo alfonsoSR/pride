@@ -1,3 +1,10 @@
+"""
+PRIDE Reference
+=================
+
+Welcome to the API reference of PRIDE!
+"""
+
 from importlib.metadata import version, PackageNotFoundError
 
 try:

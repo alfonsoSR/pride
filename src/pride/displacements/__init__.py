@@ -1,3 +1,5 @@
+"""Algorithms to model geophysical displacements of stations"""
+
 from .models import SolidTide, OceanLoading, PoleTide
 from typing import TYPE_CHECKING
 
@@ -10,4 +12,4 @@ DISPLACEMENT_MODELS: dict[str, type["Displacement"]] = {
     PoleTide.name: PoleTide,
 }
 
-__all__ = ["DISPLACEMENT_MODELS"]
+__all__ = ["DISPLACEMENT_MODELS", "SolidTide", "OceanLoading", "PoleTide"]

@@ -35,6 +35,16 @@ requires-python = ">=3.11"
 test = [
     "pytest"
 ]
+dev = [
+    "pytest",
+    "sphinx",
+    "numpydoc",
+    "sphinx_design",
+    "pydata-sphinx-theme",
+    "sphinx-favicon",
+    "sphinx-autoapi",
+    "sphinx-design"
+]
 
 [project.scripts]
 pride = "pride.cli:process_experiment"

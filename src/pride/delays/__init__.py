@@ -1,3 +1,5 @@
+"""Algorithms for delay estimation"""
+
 from .models import Geometric, AntennaDelays, Ionospheric, Tropospheric
 from typing import TYPE_CHECKING
 
@@ -11,4 +13,10 @@ DELAY_MODELS: dict[str, type["Delay"]] = {
     AntennaDelays.name: AntennaDelays,
 }
 
-__all__ = ["DELAY_MODELS"]
+__all__ = [
+    "DELAY_MODELS",
+    "Geometric",
+    "Tropospheric",
+    "Ionospheric",
+    "AntennaDelays",
+]
