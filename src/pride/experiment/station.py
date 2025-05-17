@@ -105,21 +105,7 @@ class Station:
             station.is_uplink = True
 
         # Update with clock information
-        if "CLOCK" not in experiment._Experiment__vex._Vex__content:
-            log.error(
-                f"Failed to initialize {station.name} station: "
-                "Clock information not found in VEX file"
-            )
-            exit(1)
-
-        id = station.id.upper()
-        _offset, _epoch, _rate = experiment._Experiment__vex._Vex__content[
-            "CLOCK"
-        ][id]["clock_early"][1:4]
-        epoch = datetime.strptime(_epoch, VEX_DATE_FORMAT)
-        offset = float(_offset.split()[0]) * 1e-6
-        rate = float(_rate) * 1e-6
-        station.clock_data = (epoch, offset, rate)
+        station.clock_data = experiment.clock_parameters[station.id]
 
         # Station coordinates at reference epoch
         with io.internal_file(

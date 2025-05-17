@@ -140,8 +140,8 @@ class Vex:
         return observation_modes
 
     def load_clock_parameters(
-        self, required: bool = True
-    ) -> dict[str, tuple[datetime.datetime, float, float]] | None:
+        self,
+    ) -> dict[str, tuple[datetime.datetime, float, float]]:
         """Load clock offsets from $CLOCK section
 
         [From VEX documentation]
@@ -156,18 +156,13 @@ class Vex:
         - Clock offset with respect to UTC [s]
         - Clock rate [s/s]
 
-        :param required: Fail if $CLOCK section is missing from VEX file
-        :return clock_parameters: Dictionary with clock parameters for each
-        station, or None if the section is not present and required is False.
+        :return clock_parameters: Dictionary with clock parameters for each station.
         """
 
         # Check if $CLOCK section is present
         if "CLOCK" not in self.__content:
-            if required:
-                log.error("$CLOCK section not found in VEX file.")
-                exit(1)
-            else:
-                return None
+            log.error("$CLOCK section not found in VEX file.")
+            exit(1)
 
         # Initialize container for clock parameters
         clock_parameters: dict[str, tuple[datetime.datetime, float, float]] = {}

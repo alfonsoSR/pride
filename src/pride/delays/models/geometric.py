@@ -23,17 +23,18 @@ class Geometric(Delay):
 
     def ensure_resources(self) -> None:
 
-        # Initialize SPICE kernels manager
-        kernel_manager = io.SpiceKernelManager(
-            mission=self.exp.setup.general["target"],
-            kernels_folder=self.config["data"],
-        )
+        # NOTE: This has been moved to the constructor of the Experiment class
+        # # Initialize SPICE kernels manager
+        # kernel_manager = io.SpiceKernelManager(
+        #     mission=self.exp.setup.general["target"],
+        #     kernels_folder=self.config["data"],
+        # )
 
-        # Download metakernel if not present
-        metakernel = kernel_manager.ensure_metakernel()
+        # # Download metakernel if not present
+        # metakernel = kernel_manager.ensure_metakernel()
 
-        # Download SPICE kernels in the metakernel
-        kernel_manager.ensure_kernels(metakernel)
+        # # Download SPICE kernels in the metakernel
+        # kernel_manager.ensure_kernels(metakernel)
 
         return None
 

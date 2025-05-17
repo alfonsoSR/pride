@@ -61,6 +61,9 @@ class Experiment:
         # Load target information
         self.target = io.get_target_information(self.setup.general["target"])
 
+        # Ensure SPICE kernels for target
+        self.metakernel = self.__ensure_spice_kernels(self.target["short_name"])
+
         # Load sources
         self.sources = self.load_sources(self.__vex)
 
@@ -86,6 +89,27 @@ class Experiment:
         self.delay_models = self.initialize_delay_models()
 
         return None
+
+    def __ensure_spice_kernels(self, target: str) -> Path:
+        """Ensure SPICE kernels are available for the target
+
+        :param target: Name of the target
+        :return: Path to the metakernel
+        """
+
+        # Initialize SPICE kernel manager
+        kernel_manager = io.SpiceKernelManager(
+            mission=target,
+            kernels_folder=self.setup.resources["ephemerides"],
+        )
+
+        # Ensure metakernel
+        metakernel = kernel_manager.ensure_metakernel()
+
+        # Ensure SPICE kernels listed in the metakernel
+        kernel_manager.ensure_kernels(metakernel)
+
+        return metakernel
 
     def load_sources(self, vex: "io.Vex") -> dict[str, "Source"]:
         """Load sources from VEX file
@@ -310,20 +334,13 @@ class Experiment:
         """Context manager to load SPICE kernels"""
 
         try:
-            if self.requires_spice:
-                log.debug("Loaded SPICE kernels")
-                metak = str(
-                    self.setup.resources["ephemerides"]
-                    / self.setup.general["target"]
-                    / "metak.tm"
-                )
-                spice.furnsh(metak)
+            log.debug("Loaded SPICE kernels")
+            spice.furnsh(str(self.metakernel))
 
             yield None
         finally:
-            if self.requires_spice:
-                log.debug("Unloaded SPICE kernels")
-                spice.kclear()
+            log.debug("Unloaded SPICE kernels")
+            spice.kclear()
 
         return None
 
