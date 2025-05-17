@@ -5,7 +5,7 @@ import pytest
 from astropy import time
 from datetime import datetime
 import numpy as np
-from pride.io.vex.interface import ScanData
+from pride.io.vex.interface import ScanData, SourceData
 
 
 class TestVexInterface:
@@ -147,5 +147,59 @@ class TestVexInterface:
 
         # Check that the offsets for Ceduna are correct
         assert scan_data.offsets_per_station["Cd"] == expected_offsets_Cd
+
+        return None
+
+    @pytest.mark.parametrize(
+        [
+            "source_name",
+            "expected_type",
+            "fails",
+            "use_mock_vex",
+        ],
+        [
+            ("J1222+0413", "calibrator", False, False),  # Calibrator
+            ("M362-2020", "target", False, False),  # Target
+            ("mex", "", True, False),  # Fails: Name not found
+            ("J1222+0413", "", True, True),  # Fails: Invalid type
+            ("J1230+1223", "", True, True),  # Fails: Type information missing
+            ("J1232-0224", "calibrator", True, True),  # Fails: Invalid frame
+        ],
+        ids=[
+            "Calibrator",
+            "Target",
+            "Fails: Name not found",
+            "Fails: Invalid type",
+            "Fails: Type information missing",
+            "Fails: Invalid frame",
+        ],
+    )
+    def test_load_source_data(
+        self,
+        source_name: str,
+        expected_type: str,
+        fails: bool,
+        use_mock_vex: bool,
+    ) -> None:
+
+        if use_mock_vex:
+            vex = io.Vex(self.vex_file.parent / "mock.vix")
+        else:
+            vex = io.Vex(self.vex_file)
+
+        if fails:
+            with pytest.raises(SystemExit):
+                _ = vex.load_source_data(source_name)
+            return None
+
+        source_data = vex.load_source_data(source_name)
+
+        assert isinstance(source_data, SourceData)
+        assert source_data.name == source_name
+        assert source_data.source_type == expected_type
+
+        raise NotImplementedError(
+            "Missing verification of conversion of RA and DEC"
+        )
 
         return None
