@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.17.2...3.29)
 project(${SKBUILD_PROJECT_NAME} LANGUAGES C Fortran)
 
+file(GLOB files "/usr/bin/*")
+foreach (file ${files})
+    message(STATUS "File: ${file}")
+endforeach()
+
 find_package(
   Python
   COMPONENTS Interpreter Development.Module NumPy
