@@ -71,6 +71,10 @@ class TestVexInterface:
             (None, 29),
             (["Cd"], 28),
         ],
+        ids=[
+            "No ignored stations",
+            "Cd ignored",
+        ],
     )
     def test_load_stations_section(
         self, ignored_stations: list[str] | None, expected_stations: int
@@ -122,6 +126,10 @@ class TestVexInterface:
                 ["Cd", "Hb", "Yg", "Ke", "Ww", "Ym", "T6", "Km", "Ku"],
                 (0, 120),
             ),
+        ],
+        ids=[
+            "Calibrator",
+            "Target",
         ],
     )
     def test_load_scan_from_id(
