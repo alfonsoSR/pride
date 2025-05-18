@@ -11,6 +11,7 @@ from .station_catalogs import (
 )
 from .ionex import download_ionex_file_for_date, IonexInterface
 from .vienna import download_v3gr_file_for_epoch, V3GRInterface
+from .antenna_parameters import AntennaParameters
 
 # from .frequency import load_one_way_ramping_data, load_three_way_ramping_data
 
@@ -31,4 +32,5 @@ __all__ = [
     "IonexInterface",
     "download_v3gr_file_for_epoch",
     "V3GRInterface",
+    "AntennaParameters",
 ]

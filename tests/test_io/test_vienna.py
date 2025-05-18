@@ -94,7 +94,13 @@ def test_download_v3gr_file(
 
 
 @pytest.mark.parametrize(
-    ["epoch", "station_name", "expected_coefficients", "fails"],
+    [
+        "epoch",
+        "station_name",
+        "expected_coefficients",
+        "expected_atmospheric_conditions",
+        "fails",
+    ],
     [
         (
             time.Time("2013-12-28T00:00:00", scale="utc"),
@@ -110,12 +116,14 @@ def test_download_v3gr_file(
                 -0.229,
                 0.012,
             ],
+            [56654.0, 961.88, 22.19, 21.47],
             False,
         ),
         (
             time.Time("2022-11-27T00:00:00", scale="utc"),
             "INVALID",
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0],
             True,
         ),
     ],
@@ -128,6 +136,7 @@ def test_v3gr_interface(
     epoch: "time.Time",
     station_name: str,
     expected_coefficients: list[float],
+    expected_atmospheric_conditions: list[float],
     fails: bool,
     tmp_path: Path,
 ) -> None:
@@ -145,5 +154,12 @@ def test_v3gr_interface(
     coefficients = v3gr_interface.read_v3gr_data_for_station(station_name)
     assert coefficients == expected_coefficients
     assert len(coefficients) == 9
+
+    # Read atmospheric conditions for the specified station
+    atmospheric_conditions = (
+        v3gr_interface.read_atmospheric_conditions_at_station(station_name)
+    )
+    assert atmospheric_conditions == expected_atmospheric_conditions
+    assert len(atmospheric_conditions) == 4
 
     return None

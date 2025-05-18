@@ -26,11 +26,11 @@ class V3GRInterface:
 
         return None
 
-    def read_v3gr_data_for_station(self, station_name: str) -> list[float]:
-        """Read V3GR data for a specific station
+    def __find_station_line_in_v3gr_file(self, station_name: str) -> str:
+        """Find the line in the V3GR file that contains the station data
 
         :param station_name: Name of the station
-        :return site_data: List of coefficients for the station
+        :return: Line containing the station data
         """
 
         with self.v3gr_file.open() as file:
@@ -57,9 +57,47 @@ class V3GRInterface:
             )
             exit(1)
 
+        return station_line
+
+    def read_v3gr_data_for_station(self, station_name: str) -> list[float]:
+        """Read V3GR data for a specific station
+
+        :param station_name: Name of the station
+        :return site_data: List of coefficients for the station
+        """
+
+        # Find the line in the V3GR file that contains the station data
+        station_line = self.__find_station_line_in_v3gr_file(station_name)
+
         # Extract MJD and coefficients from line
         line_contents = station_line.split()
         coefficients = [float(x) for x in line_contents[1:6]] + [
             float(x) for x in line_contents[9:]
         ]
         return coefficients
+
+    def read_atmospheric_conditions_at_station(
+        self, station_name: str
+    ) -> list[float]:
+        """Read atmospheric conditions at a specific station
+
+        Parses the V3GR file to extract the atmospheric conditions for a station, and returns them as a list with the following items:
+        1. Modified Julian Date
+        2. Atmospheric pressure (hPa)
+        3. Temperature (Celsius)
+        4. Water vapor pressure (hPa)
+
+        :param station_name: Name of the station
+        :return site_data: Atmospheric conditions for the station
+        """
+
+        # Find the line in the V3GR file that contains the station data
+        station_line = self.__find_station_line_in_v3gr_file(station_name)
+
+        # Extract MJD and atmospheric conditions from line
+        line_contents = station_line.split()[1:]
+        atmospheric_conditions = [float(line_contents[0])]
+        for item in line_contents[5:8]:
+            atmospheric_conditions.append(float(item))
+
+        return atmospheric_conditions

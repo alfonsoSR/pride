@@ -5,7 +5,6 @@ from astropy import time, coordinates
 import numpy as np
 from .. import coordinates as coord
 from scipy import interpolate
-from ..io.vex.interface import VEX_DATE_FORMAT
 from datetime import datetime
 
 if TYPE_CHECKING:

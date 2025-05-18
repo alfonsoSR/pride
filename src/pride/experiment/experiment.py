@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Generator, Any
+from typing import TYPE_CHECKING, Generator
 from pathlib import Path
 from contextlib import contextmanager
 import spiceypy as spice
