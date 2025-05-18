@@ -9,6 +9,8 @@ Catalogues:
   ocean_loading: tpxo72.blq
   # Format of frequency ramping files
   frequency_ramping: frequency_ramping/ramp
+  # Alternative station names
+  alternative_station_names: station_names.yaml
 Configuration:
   # Celestial bodies to consider for relativistic LT corrections
   lt_correction_bodies: [

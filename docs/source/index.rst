@@ -26,3 +26,4 @@ Installation
 
    API Reference <api/pride/index>
    Usage <usage>
+   VEX Requirements <vex-requirements>

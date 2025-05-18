@@ -6,7 +6,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from .experiment import Experiment
-    from .source import Source
+    from ..source import Source
     from ..types import Band
     from .baseline import Baseline
 

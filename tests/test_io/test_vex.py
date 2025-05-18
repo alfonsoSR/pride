@@ -2,10 +2,10 @@ from pride import io, types
 from pathlib import Path
 import os
 import pytest
-from astropy import time
+from astropy import time, coordinates
 from datetime import datetime
 import numpy as np
-from pride.io.vex.interface import ScanData
+from pride.io.vex.interface import ScanData, SourceData
 
 
 class TestVexInterface:
@@ -71,6 +71,10 @@ class TestVexInterface:
             (None, 29),
             (["Cd"], 28),
         ],
+        ids=[
+            "No ignored stations",
+            "Cd ignored",
+        ],
     )
     def test_load_stations_section(
         self, ignored_stations: list[str] | None, expected_stations: int
@@ -123,6 +127,10 @@ class TestVexInterface:
                 (0, 120),
             ),
         ],
+        ids=[
+            "Calibrator",
+            "Target",
+        ],
     )
     def test_load_scan_from_id(
         self,
@@ -147,5 +155,107 @@ class TestVexInterface:
 
         # Check that the offsets for Ceduna are correct
         assert scan_data.offsets_per_station["Cd"] == expected_offsets_Cd
+
+        return None
+
+    @pytest.mark.parametrize(
+        [
+            "source_name",
+            "expected_type",
+            "expected_ra_dec",
+            "fails",
+            "use_mock_vex",
+        ],
+        [
+            (
+                "CAL5",
+                "calibrator",
+                "12h43m52.49s -02d18m38.4s",
+                False,
+                False,
+            ),  # Calibrator
+            (
+                "M362-2020",
+                "target",
+                None,
+                False,
+                False,
+            ),  # Target
+            (
+                "mex",
+                "",
+                None,
+                True,
+                False,
+            ),  # Fails: Name not found
+            (
+                "J1222+0413",
+                "",
+                None,
+                True,
+                True,
+            ),  # Fails: Invalid type
+            (
+                "J1230+1223",
+                "",
+                None,
+                True,
+                True,
+            ),  # Fails: Type information missing
+            (
+                "J1232-0224",
+                "calibrator",
+                None,
+                True,
+                True,
+            ),  # Fails: Invalid frame
+        ],
+        ids=[
+            "Calibrator",
+            "Target",
+            "Fails: Name not found",
+            "Fails: Invalid type",
+            "Fails: Type information missing",
+            "Fails: Invalid frame",
+        ],
+    )
+    def test_load_source_data(
+        self,
+        source_name: str,
+        expected_type: str,
+        expected_ra_dec: tuple[str | None, str | None],
+        fails: bool,
+        use_mock_vex: bool,
+    ) -> None:
+
+        if use_mock_vex:
+            vex = io.Vex(self.vex_file.parent / "mock.vix")
+        else:
+            vex = io.Vex(self.vex_file)
+
+        if fails:
+            with pytest.raises(SystemExit):
+                _ = vex.load_source_data(source_name)
+            return None
+
+        source_data = vex.load_source_data(source_name)
+
+        assert isinstance(source_data, SourceData)
+        assert source_data.name == source_name
+        assert source_data.source_type == expected_type
+
+        # Check that the RA and DEC are correct
+        if source_data.source_type == "target":
+            assert source_data.right_ascension is None
+            assert source_data.declination is None
+        else:
+            coords = coordinates.SkyCoord(
+                ra=source_data.right_ascension,
+                dec=source_data.declination,
+                unit=("rad", "rad"),
+                frame="icrs",
+                obstime="J2000",
+            )
+            assert coords.to_string("hmsdms") == expected_ra_dec
 
         return None

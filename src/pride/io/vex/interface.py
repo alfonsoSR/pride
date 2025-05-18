@@ -2,7 +2,7 @@ from .parser import parse
 from dataclasses import dataclass
 from pathlib import Path
 from ...logger import log
-from astropy import time
+from astropy import time, coordinates
 from ...types import ObservationMode
 import datetime
 from ..resources import load_catalog
@@ -18,6 +18,44 @@ class ScanData:
     observation_mode: str
     initial_epoch: datetime.datetime
     offsets_per_station: dict[str, tuple[int, int]]
+
+
+@dataclass
+class SourceData:
+    """Data structure for source information
+
+    :param name: Name of the source
+    :param source_type: Type of the source (e.g., "target", "calibrator")
+    :param right_ascension: J2000 right ascension in radians, or None for
+    near-field sources.
+    :param declination: J2000 declination in radians, or None for near-field
+    sources.
+    """
+
+    name: str
+    source_type: str
+    right_ascension: float | None
+    declination: float | None
+
+    def __post_init__(self) -> None:
+        """Post-initialization checks
+
+        The way in which we transform the coordinates to radians assumes that
+        the distance to the source is large enough for the geocentric, and
+        SSB right ascension and declination to be the same. This is not the case
+        for near-field sources. However, since their coordinates are not
+        needed, we set them to None.
+        """
+
+        if self.source_type == "target":
+            if self.right_ascension is not None or self.declination is not None:
+                log.error(
+                    f"Attempted to load coordinates from VEX file for "
+                    "source of type `target`."
+                )
+                exit(1)
+
+        return None
 
 
 class Vex:
@@ -62,6 +100,9 @@ class Vex:
 
         # Experiment sources
         self.experiment_sources = self.__content["SOURCE"]
+        self.experiment_source_names: list[str] = list(
+            self.__content["SOURCE"].keys()
+        )
 
         # Experiment scans
         self.experiment_scans_ids: list[str] = list(
@@ -99,8 +140,8 @@ class Vex:
         return observation_modes
 
     def load_clock_parameters(
-        self, required: bool = True
-    ) -> dict[str, tuple[datetime.datetime, float, float]] | None:
+        self,
+    ) -> dict[str, tuple[datetime.datetime, float, float]]:
         """Load clock offsets from $CLOCK section
 
         [From VEX documentation]
@@ -115,18 +156,13 @@ class Vex:
         - Clock offset with respect to UTC [s]
         - Clock rate [s/s]
 
-        :param required: Fail if $CLOCK section is missing from VEX file
-        :return clock_parameters: Dictionary with clock parameters for each
-        station, or None if the section is not present and required is False.
+        :return clock_parameters: Dictionary with clock parameters for each station.
         """
 
         # Check if $CLOCK section is present
         if "CLOCK" not in self.__content:
-            if required:
-                log.error("$CLOCK section not found in VEX file.")
-                exit(1)
-            else:
-                return None
+            log.error("$CLOCK section not found in VEX file.")
+            exit(1)
 
         # Initialize container for clock parameters
         clock_parameters: dict[str, tuple[datetime.datetime, float, float]] = {}
@@ -190,6 +226,74 @@ class Vex:
 
         return stations_dictionary
 
+    def load_source_data(self, source_name: str) -> "SourceData":
+        """Load information about a source
+
+        Loads the type information and, for calibrators, the observed
+        coordinates from the VEX file. The function ensures that type information
+        is present, that the source type is valid, and that the coordinates are
+        specified in the J2000 reference frame. The information is loaded into
+        a SourceData data structure.
+
+        :param source_name: Name of the source to load
+        :return source_data: Data structure with information about the source
+        """
+
+        # Ensure source is present in the VEX file
+        if source_name not in self.experiment_source_names:
+            log.error(f"Source {source_name} not found in VEX file.")
+            exit(1)
+
+        # Load raw data from VEX file
+        source_data = self.__content["SOURCE"][source_name]
+
+        # Ensure that type information is present [TODO: PREPROCESSOR]
+        if "source_type" not in source_data:
+            log.error(
+                f"Failed to generate {source_name} source: "
+                "Type information missing from VEX file"
+            )
+            exit(1)
+
+        # Ensure that the source type is valid [TODO: PREPROCESSOR]
+        if source_data["source_type"] not in ("target", "calibrator"):
+            log.error(
+                f"Failed to generate {source_name} source: "
+                f"Invalid source type {source_data['source_type']}"
+            )
+            exit(1)
+        source_type: str = str(source_data["source_type"])
+
+        # Ensure that the coordinates are given in a valid frame
+        # TODO: PREPROCESSOR
+        if source_data["ref_coord_frame"] != "J2000":
+            log.error(
+                f"Failed to generate {source_name} source: "
+                f"Invalid reference frame {source_data['ref_coord_frame']}"
+            )
+            exit(1)
+
+        # If the source is a calibrator, load the coordinates
+        if source_type == "calibrator":
+            source_coordinates = coordinates.SkyCoord(
+                ra=source_data["ra"],
+                dec=source_data["dec"],
+                obstime=source_data["ref_coord_frame"],
+                frame="icrs",
+            )
+            right_ascension = float(source_coordinates.ra.to("rad").value)  # type: ignore
+            declination = float(source_coordinates.dec.to("rad").value)  # type: ignore
+        else:
+            right_ascension = None
+            declination = None
+
+        return SourceData(
+            name=source_name,
+            source_type=source_type,
+            right_ascension=right_ascension,
+            declination=declination,
+        )
+
     def load_single_scan_data(
         self, scan_id: str, experiment_target: str
     ) -> ScanData:
@@ -213,24 +317,18 @@ class Vex:
             exit(1)
         scan_data = self.__content["SCHED"][scan_id]
 
-        # Get source name
+        # Load source data from VEX file
         _sources = scan_data.getall("source")
         if len(_sources) != 1:
             log.error(f"Found multiple sources for scan {scan_id}: {_sources}")
             exit(1)
-        source_name = _sources[0]
+        source_data = self.load_source_data(_sources[0])
 
-        # Get source type
-        if "source_type" not in self.__content["SOURCE"][source_name]:
-            log.error(
-                f"Missing `source_type` for source {source_name} in VEX file."
-            )
-            exit(1)
-        source_type = self.__content["SOURCE"][source_name]["source_type"]
-
-        # If source type is "target", use the experiment target name
-        if source_type == "target":
+        # Get source name
+        if source_data.source_type == "target":
             source_name = experiment_target
+        else:
+            source_name = source_data.name
 
         # Get observation mode
         observation_mode = scan_data["mode"]
@@ -250,7 +348,7 @@ class Vex:
             )
 
         return ScanData(
-            source_type,
+            source_data.source_type,
             source_name,
             observation_mode,
             initial_epoch,

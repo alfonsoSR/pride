@@ -1,13 +1,11 @@
 from ..core import Delay
-from ... import io
+from ... import io, utils
 from typing import TYPE_CHECKING, Any
 from ...logger import log
-import requests
 from astropy import time
 import numpy as np
 from scipy import interpolate
 
-from ...types import Antenna
 import spiceypy as spice
 
 if TYPE_CHECKING:
@@ -37,48 +35,20 @@ class AntennaDelays(Delay):
     def ensure_resources(self) -> None:
 
         # Initialize date from which to look for atmospheric data
-        date: Any = time.Time(
-            self.exp.initial_epoch.mjd // 1, format="mjd", scale="utc"  # type: ignore
-        )
-        step = time.TimeDelta(6 * 3600, format="sec")
-        date += (self.exp.initial_epoch.datetime.hour // 6) * step  # type: ignore
+        date = utils.get_date_from_epoch(self.exp.initial_epoch)
+        step = time.TimeDelta(1, format="jd")
 
-        # Define coverage dictionary
+        # Download atmospheric data files (V3GR)
         site_coverage: dict[tuple[time.Time, time.Time], Path] = {}
-
-        # Acquire tropospheric data
         while True:
 
-            # Get year and day of year
-            year = date.datetime.year
-            doy = date.datetime.timetuple().tm_yday
-
-            # Site-specific data
-            site_file = self.config["data"] / f"{year:04d}{doy:03d}.v3gr_r"
-            site_url = (
-                self.etc["url"]
-                + f"/VLBI/V3GR/V3GR_OP/daily/{year:04d}/{site_file.name}"
+            # Get V3GR file for current date
+            v3gr_file = io.download_v3gr_file_for_epoch(
+                date, self.config["data"]
             )
-            if not site_file.parent.exists():
-                site_file.parent.mkdir(parents=True, exist_ok=True)
-            if not site_file.exists():
-                log.info(f"Downloading {site_file}")
-                response = requests.get(site_url)
-                if not response.ok:
-                    raise FileNotFoundError(
-                        "Failed to initialize tropospheric delay: "
-                        f"Failed to download {site_url}"
-                    )
-                site_file.write_bytes(response.content)
 
-            if site_file not in site_coverage.values():
-                site_coverage[(date, date + step)] = site_file
-            else:
-                key = list(site_coverage.keys())[
-                    list(site_coverage.values()).index(site_file)
-                ]
-                site_coverage.pop(key)
-                site_coverage[(key[0], date + step)] = site_file
+            # Add coverage to dictionary
+            site_coverage[(date, date + step)] = v3gr_file
 
             # Update date
             if date > self.exp.final_epoch:
@@ -92,86 +62,52 @@ class AntennaDelays(Delay):
 
     def load_resources(self) -> dict[str, Any]:
 
-        log.debug(f"Loading resources for {self.name} delay")
+        log.info(f"Loading resources for {self.name} delay")
 
-        resources: dict[str, tuple["Antenna", Any]] = {}
-
+        resources: dict[str, tuple[io.AntennaParameters | None, Any]] = {}
         for baseline in self.exp.baselines:
 
+            # Skip if resources are already available for this station
             station = baseline.station
             if station in resources:
                 continue
 
-            # Generate antenna object from thermal deformation data file
-            _antenna = Antenna(ivs_name=station.name)
-            with io.internal_file(
-                self.exp.setup.catalogues["antenna_parameters"]
-            ).open() as f:
+            # Load antenna parameters from catalog
+            antenna_parameters = io.AntennaParameters.from_catalog_missing_ok(
+                station.name
+            )
 
-                matching_antenna: str | None = None
-                for line in f:
-                    line = line.strip()
-                    if len(line) == 0 or line[0] == "#":
-                        continue
-                    if "ANTENNA_INFO" in line and any(
-                        [x in line for x in station.possible_names]
-                    ):
-                        matching_antenna = line
-                        break
-
-                if matching_antenna is None:
-                    log.warning(
-                        f"Thermal deformation disabled for {station.name}: "
-                        "Missing antenna parameters"
-                    )
-                    resources[station.name] = (_antenna, None)
-                    continue
-                else:
-                    _antenna = Antenna.from_string(matching_antenna)
-
-            # Load atmospheric data from site-specific Vienna files
-            data = []
-            for source in self.resources["coverage"].values():
-
-                with source.open() as file:
-
-                    content: str = ""
-                    for line in file:
-                        if np.any(
-                            [name in line for name in station.possible_names]
-                        ):
-                            content = line
-                            break
-
-                    if content == "":
-                        log.warning(
-                            f"Thermal deformation disabled for {station.name}: "
-                            "Missing atmospheric data"
-                        )
-                        break
-
-                    _data = [float(x) for x in content.split()[1:]]
-                    data.append([_data[0]] + _data[5:8])
-
-            # Flag station if no data is available
-            if len(data) == 0:
-                resources[station.name] = (_antenna, None)
+            # If antenna parameters are not available, skip this station
+            if antenna_parameters is None:
+                resources[station.name] = (None, None)
                 continue
 
-            data = np.array(data).T
+            # Load atmospheric data from site-specific Vienna files
+            mjd, pressure, temperature, water_vapor_pressure = np.array(
+                [
+                    io.V3GRInterface(
+                        source
+                    ).read_atmospheric_conditions_at_station(station.name)
+                    for source in self.resources["coverage"].values()
+                ]
+            ).T
 
             # Calculate humidity
-            hum = self.humidity_model(data[2], data[3])
+            humidity = self.humidity_model(temperature, water_vapor_pressure)
 
-            interp_type: str = "linear" if len(data[0]) <= 3 else "cubic"
-            _thermo = {
-                "p": interpolate.interp1d(data[0], data[1], kind=interp_type),
-                "TC": interpolate.interp1d(data[0], data[2], kind=interp_type),
-                "hum": interpolate.interp1d(data[0], hum, kind=interp_type),
+            # Generate interpolators for atmospheric data
+            interp_type = "linear" if len(mjd) <= 3 else "cubic"
+            atmospheric_interpolators = {
+                "p": interpolate.interp1d(mjd, pressure, kind=interp_type),
+                "TC": interpolate.interp1d(mjd, temperature, kind=interp_type),
+                "hum": interpolate.interp1d(mjd, humidity, kind=interp_type),
             }
 
             # Add station to resources
-            resources[station.name] = (_antenna, _thermo)
+            resources[station.name] = (
+                antenna_parameters,
+                atmospheric_interpolators,
+            )
 
         return resources
 
@@ -180,17 +116,21 @@ class AntennaDelays(Delay):
 
         dt_axis_offset = self.calculate_axis_offset(obs)
         dt_thermal_deformation = self.calculate_thermal_deformation(obs)
+
         return dt_axis_offset + dt_thermal_deformation
 
     def calculate_axis_offset(self, obs: "Observation") -> Any:
 
         # Load resources
         resources = self.loaded_resources[obs.station.name]
-        antenna: Antenna = resources[0]
         if resources[1] is None:
             log.warning(f"{self.name} delay set to zero for {obs.station.name}")
             return np.zeros_like(obs.tstamps.jd)
+
+        antenna: io.AntennaParameters = resources[0]
+        assert isinstance(antenna, io.AntennaParameters)
         thermo: dict[str, Any] = resources[1]
+        assert thermo is not None
         clight = spice.clight() * 1e3
 
         # Geodetic coordinates of station
@@ -331,12 +271,13 @@ class AntennaDelays(Delay):
 
         # Load resources
         resources = self.loaded_resources[obs.station.name]
-        antenna: Antenna = resources[0]
         thermo: dict[str, Any] = resources[1]
         if thermo is None:
             log.warning(f"{self.name} delay set to zero for {obs.station.name}")
             return np.zeros_like(obs.tstamps.jd)
 
+        antenna: io.AntennaParameters = resources[0]
+        assert isinstance(antenna, io.AntennaParameters)
         # Antenna focus factor based on focus type [See Nothnagel (2009)]
         match antenna.focus_type:
             case "FO_PRIM":

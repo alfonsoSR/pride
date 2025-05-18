@@ -1,9 +1,26 @@
 import numpy as np
 from astropy import units
-from . import io
-import math
-from .logger import log
 import datetime
+from ..logger import log
+from .. import io
+import math
+from typing import Sequence, Callable, Any
+from scipy import interpolate
+from importlib import resources
+import yaml
+from pathlib import Path
+
+# Load internal configuration
+with resources.path("pride.data", "config.yaml") as config_path:
+
+    __config = yaml.safe_load(config_path.open())
+    INTERNAL_CATALOGS: dict[str, str] = __config["Catalogues"]
+    INTERNAL_CONFIGURATION: dict[str, Any] = __config["Configuration"]
+    ALTERNATIVE_STATION_NAMES: dict[str, list[str]] = yaml.safe_load(
+        (
+            config_path.parent / INTERNAL_CATALOGS["alternative_station_names"]
+        ).open()
+    )
 
 
 def eops_arcsec2rad(eops: np.ndarray) -> np.ndarray:
@@ -58,32 +75,29 @@ def discretize_scan(
     # Calculate initial epoch for the scan
     initial_epoch = reference_epoch + datetime.timedelta(seconds=initial_offset)
 
-    # Load internal configuration for scan discretization
-    internal_setup = io.load_catalog("config.yaml")["Configuration"]
-
     # Calculate the scan duration and a tentative step size
     scan_duration: int = final_offset - initial_offset
-    min_extra_points: int = internal_setup["min_obs_per_scan"] - 1
+    min_extra_points: int = INTERNAL_CONFIGURATION["min_obs_per_scan"] - 1
     tentative_step: float = scan_duration / min_extra_points
 
     # Calculate number of extra points based on internal constraints
     # Number of observation is number of extra points + 1 (beginning)
-    if tentative_step > internal_setup["default_scan_step"]:
+    if tentative_step > INTERNAL_CONFIGURATION["default_scan_step"]:
 
         number_of_extra_points = math.ceil(
-            scan_duration / internal_setup["default_scan_step"]
+            scan_duration / INTERNAL_CONFIGURATION["default_scan_step"]
         )
 
     elif (
-        internal_setup["min_scan_step"]
+        INTERNAL_CONFIGURATION["min_scan_step"]
         <= tentative_step
-        <= internal_setup["default_scan_step"]
+        <= INTERNAL_CONFIGURATION["default_scan_step"]
     ):
         number_of_extra_points = math.ceil(scan_duration / tentative_step)
 
     else:
         number_of_extra_points = math.floor(
-            scan_duration / internal_setup["min_scan_step"]
+            scan_duration / INTERNAL_CONFIGURATION["min_scan_step"]
         )
         log.warning(f"Using minimum allowed step size for {scan_id}")
 
@@ -98,3 +112,24 @@ def discretize_scan(
     ]
 
     return discretized_time_range
+
+
+def is_station_in_line(station_name: str, line: str) -> bool:
+    """Check if a line of a data file corresponds to a station
+
+    Since station names are not unique, checking if a line of a data file contains information about a station requires certain logic. This function takes a station name, retrieves a list of possible names from an internal catalog, and checks if any of them is present in the line.
+
+    The function splits the line into words to prevent returning True when the station name is part of some word. For example, if station name is HART, the function should return False for a line containing HARTAO
+
+    :param station_name: Name of the station as specified in the internal catalog
+    :param line: Line of the data file
+    :return: True if the line corresponds to the station, False otherwise
+    """
+
+    # Get alternative names for the station
+    alternative_names: list[str] = [station_name]
+    if station_name in ALTERNATIVE_STATION_NAMES:
+        alternative_names += ALTERNATIVE_STATION_NAMES[station_name]
+
+    # Check if any of the alternative names is present in the line
+    return any([name in line.split() for name in alternative_names])

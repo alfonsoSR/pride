@@ -7,6 +7,7 @@ import unlzw3
 import gzip
 import numpy as np
 from scipy import interpolate
+from ... import io, utils
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,76 +42,19 @@ class Ionospheric(Delay):
         )
 
         # Define range of dates to look for ionospheric data
-        date: time.Time = time.Time(
-            self.exp.initial_epoch.mjd // 1, format="mjd", scale="utc"  # type: ignore
-        )
-        date.format = "iso"
+        date = utils.get_date_from_epoch(self.exp.initial_epoch)
         step = time.TimeDelta(1.0, format="jd")
 
         coverage: dict[tuple[time.Time, time.Time], Path] = {}
         while True:
 
-            # Get gps week from date
-            gps_week = int((date - self.etc["gps_week_ref"]).to("week").value)
-            year = date.datetime.year  # type: ignore
-            doy = date.datetime.timetuple().tm_yday  # type: ignore
-
-            # Get file name and url for ionospheric data file
-            if gps_week < self.etc["new_format_week"]:
-                ionex_zip = f"igsg{doy:03d}0.{str(year)[2:]}i.Z"
-            else:
-                ionex_zip = (
-                    f"IGS0OPS{self.etc['solution_type']}_{year:04d}{doy:03d}"
-                    "0000_01D_02H_GIM.INX.gz"
-                )
-            ionex_file = self.config["data"] / ionex_zip
-            # ionex_file = self.exp.setup.catalogues["ionospheric_data"] / ionex_zip
-            url = f"{self.etc['url']}/{year:4d}/{doy:03d}/{ionex_zip}"
-
-            # Ensure parent directory exists
-            if not ionex_file.parent.exists():
-                ionex_file.parent.mkdir(parents=True, exist_ok=True)
-
-            # Download file if not present
-            if not ionex_file.with_suffix("").exists():
-
-                if not ionex_file.exists():
-
-                    log.info(f"Downloading {ionex_file.name}")
-
-                    ftp = FTP_TLS(self.etc["ftp_server"])
-                    ftp.login(user="anonymous", passwd="")
-                    ftp.prot_p()
-                    ftp.cwd(
-                        "gps/products/ionex/" + "/".join(url.split("/")[-3:-1])
-                    )
-                    if not ionex_file.name in ftp.nlst():
-                        raise FileNotFoundError(
-                            "Failed to initialize ionospheric delay: "
-                            f"Failed to download {url}"
-                        )
-                    ftp.retrbinary(
-                        f"RETR {ionex_file.name}", ionex_file.open("wb").write
-                    )
-
-                # Uncompress file
-                if ionex_file.suffix == ".Z":
-                    ionex_file.with_suffix("").write_bytes(
-                        unlzw3.unlzw(ionex_file.read_bytes())
-                    )
-                    ionex_file.unlink()
-                elif ionex_file.suffix == ".gz":
-                    with gzip.open(ionex_file, "rb") as f_in:
-                        ionex_file.with_suffix("").write_bytes(f_in.read())
-                    ionex_file.unlink()
-                else:
-                    raise ValueError(
-                        "Failed to initialize ionospheric delay: "
-                        "Invalid ionospheric data format"
-                    )
+            # Download ionex file for the given date
+            ionex_file = io.download_ionex_file_for_date(
+                date, self.config["data"]
+            )
 
             # Add coverage to dictionary
-            coverage[(date, date + step)] = ionex_file.with_suffix("")
+            coverage[(date, date + step)] = ionex_file
 
             # Update date
             if date > self.exp.final_epoch:
@@ -128,92 +72,77 @@ class Ionospheric(Delay):
 
         # Generate TEC maps
         tec_epochs = time.Time([key[0] for key in self.resources["coverage"]])
-        _tec_maps: list[np.ndarray] = []
+        tec_grid_interpolators: list[interpolate.RegularGridInterpolator] = []
 
+        # Reference values for Earth radius and ionospheric height
+        reference_earth_radius: float = NotImplemented
+        reference_ionospheric_height: float = NotImplemented
+
+        # Load TEC maps from all the IONEX files
         for source in self.resources["coverage"].values():
 
-            with source.open() as f:
+            # Read IONEX file
+            ionex_content = io.IonexInterface(source)
+            tec_interpolators, ref_height, ref_rearth = (
+                ionex_content.read_data_from_ionex_file()
+            )
 
-                content = iter([line.strip() for line in f])
-                lat_grid: np.ndarray | None = None
-                lon_grid: np.ndarray | None = None
-                ref_height: float = NotImplemented
-                ref_rearth: float = NotImplemented
+            # Update reference Earth radius or check consistency
+            if reference_earth_radius is NotImplemented:
+                reference_earth_radius = ref_rearth
+            elif reference_earth_radius != ref_rearth:
+                log.error(
+                    f"Failed to load TEC maps: "
+                    "Inconsistent reference Earth radius accross files"
+                )
+                exit(1)
 
-                while True:
+            # Update reference ionospheric height or check consistency
+            if reference_ionospheric_height is NotImplemented:
+                reference_ionospheric_height = ref_height
+            elif reference_ionospheric_height != ref_height:
+                log.error(
+                    f"Failed to load TEC maps: "
+                    "Inconsistent reference ionospheric height accross files"
+                )
+                exit(1)
 
-                    try:
-                        line = next(content)
-                    except StopIteration:
-                        break
+            # Update list of TEC map interpolators
+            for tec_interpolator in tec_interpolators:
+                tec_grid_interpolators.append(tec_interpolator)
 
-                    # Read reference ionospheric height
-                    if "HGT1 / HGT2 / DHGT" in line:
-                        h1, h2 = np.array(line.split()[:2], dtype=float)
-                        # Sanity check
-                        if h1 != h2:
-                            raise ValueError("Unexpected behavior")
-                        ref_height = h1
-
-                    # Read reference radius of the Earth
-                    if "BASE RADIUS" in line:
-                        ref_rearth = float(line.split()[0])
-
-                    # Define latitude and longitude grids
-                    if "LAT1 / LAT2 / DLAT" in line:
-                        l0, l1, dl = np.array(line.split()[:3], dtype=float)
-                        lat_grid = np.arange(l0, l1 + dl / 2, dl)
-                    if "LON1 / LON2 / DLON" in line:
-                        l0, l1, dl = np.array(line.split()[:3], dtype=float)
-                        lon_grid = np.arange(l0, l1 + dl / 2, dl)
-
-                    if "START OF TEC MAP" not in line:
-                        continue
-                    assert "START OF TEC MAP" in line
-                    assert lat_grid is not None and lon_grid is not None
-                    next(content)
-                    next(content)
-
-                    # Read TEC map
-                    grid = np.zeros((len(lat_grid), len(lon_grid)))
-                    for i, _ in enumerate(lat_grid):
-
-                        grid[i] = np.array(
-                            " ".join(
-                                [next(content).strip() for _ in range(5)]
-                            ).split(),
-                            dtype=float,
-                        )
-                        line = next(content)
-
-                    assert "END OF TEC MAP" in line
-                    _tec_maps.append(grid)
-
-        tec_maps = [
-            interpolate.RegularGridInterpolator((lon_grid, lat_grid), grid.T)
-            for grid in _tec_maps
-        ]
-
-        # Generate interpolators for the baselines
+        # Initialize resources dictionary with reference values
         resources: dict[str, Any] = {
-            "ref_height": ref_height,
-            "ref_rearth": ref_rearth,
+            "ref_height": reference_ionospheric_height,
+            "ref_rearth": reference_earth_radius,
         }
+
+        # Generate a 1D TEC interpolator for each station
         for baseline in self.exp.baselines:
 
+            # Station latitude and longitude for each coverage epoch
             coords = coordinates.EarthLocation(
-                *baseline.station.location(tec_epochs, frame="itrf").T, unit="m"
+                *baseline.station.location(tec_epochs, frame="itrf").T,
+                unit="m",
             ).to_geodetic("GRS80")
             lat: np.ndarray = coords.lat.deg  # type: ignore
             lon: np.ndarray = coords.lon.deg  # type: ignore
 
-            data = [
-                tec_map([lon, lat])[0]
-                for tec_map, lon, lat in zip(tec_maps, lon, lat)
+            # Get TEC at station coordinates for each epoch in coverage
+            tec_at_station_coordinates: list[float] = [
+                float(tec_grid_interpolator([lon, lat])[0])
+                for tec_grid_interpolator, lon, lat in zip(
+                    tec_grid_interpolators, lon, lat
+                )
             ]
-            interp_type: str = "linear" if len(data) <= 3 else "cubic"
+
+            # Generate a 1D interpolator with the TEC at station coordinates
+            # as function of the observation epoch
+            interp_type: str = (
+                "linear" if len(tec_at_station_coordinates) <= 3 else "cubic"
+            )
             resources[baseline.station.name] = interpolate.interp1d(
-                tec_epochs.mjd, data, kind=interp_type
+                tec_epochs.mjd, tec_at_station_coordinates, kind=interp_type
             )
 
         return resources

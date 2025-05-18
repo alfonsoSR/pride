@@ -5,14 +5,10 @@ from astropy import time, coordinates
 import numpy as np
 from .. import coordinates as coord
 from scipy import interpolate
-import spiceypy as spice
-from ..constants import J2000
-from ..io.vex.interface import VEX_DATE_FORMAT
 from datetime import datetime
 
 if TYPE_CHECKING:
     from .experiment import Experiment
-    from .source import NearFieldSource
 
 
 class Station:
@@ -108,90 +104,19 @@ class Station:
             station.is_uplink = True
 
         # Update with clock information
-        if "CLOCK" not in experiment._Experiment__vex._Vex__content:
-            log.error(
-                f"Failed to initialize {station.name} station: "
-                "Clock information not found in VEX file"
-            )
-            exit(1)
+        station.clock_data = experiment.clock_parameters[station.id]
 
-        id = station.id.upper()
-        _offset, _epoch, _rate = experiment._Experiment__vex._Vex__content[
-            "CLOCK"
-        ][id]["clock_early"][1:4]
-        epoch = datetime.strptime(_epoch, VEX_DATE_FORMAT)
-        offset = float(_offset.split()[0]) * 1e-6
-        rate = float(_rate) * 1e-6
-        station.clock_data = (epoch, offset, rate)
+        # Get reference epoch, position and velocity for the station
+        station._ref_epoch = io.load_reference_epoch_for_station_catalog()
+        station._ref_location = io.load_station_coordinates_from_catalog(
+            station.name
+        )
+        station._ref_velocity = io.load_station_velocity_from_catalog(
+            station.name
+        )
 
-        # Station coordinates at reference epoch
-        with io.internal_file(
-            setup.catalogues["station_positions"]
-        ).open() as f:
-
-            content = f.readlines()
-
-            # Reference epoch
-            ref_epoch_str: str | None = None
-            for line in content:
-                if "EPOCH" in line:
-                    ref_epoch_str = line.split()[-1]
-                    continue  # NOTE: Why not replace with break?
-            if ref_epoch_str is None:
-                log.error(
-                    f"Failed to initialize {station.name} station: "
-                    "Reference epoch not found in "
-                    f"{setup.catalogues['station_positions']}"
-                )
-                exit(1)
-            station._ref_epoch = time.Time.strptime(
-                ref_epoch_str, "%Y.%m.%d", scale="utc"
-            )
-
-            # Station coordinates
-            matching_position: str | None = None
-            for line in content:
-                line = line.strip()
-                if len(line) == 0 or line[0] == "$":
-                    continue
-                if any([name in line for name in station.possible_names]):
-                    matching_position = line
-                    break
-            if matching_position is None:
-                log.error(
-                    f"Failed to initialize {station.name} station: "
-                    "Coordinates not found in "
-                    f"{setup.catalogues['station_positions']}"
-                )
-                exit(1)
-            station._ref_location = np.array(
-                matching_position.split()[1:4], dtype=float
-            )
-
-        # Station velocity at reference epoch
-        with io.internal_file(
-            setup.catalogues["station_velocities"]
-        ).open() as f:
-
-            matching_velocity: str | None = None
-            for line in f:
-                line = line.strip()
-                if len(line) == 0 or line[0] == "$":
-                    continue
-                if any([name in line for name in station.possible_names]):
-                    matching_velocity = line
-                    break
-            if matching_velocity is None:
-                log.error(
-                    f"Failed to initialize {station.name} station: "
-                    f"Velocity not found in {setup.catalogues['station_velocities']}"
-                )
-                exit(1)
-            station._ref_velocity = (
-                np.array(matching_velocity.split()[1:4], dtype=float) * 1e-3
-            )
-
-            station.has_tectonic_correction = True
+        # Set flag for tectonic correction
+        station.has_tectonic_correction = True
 
         return station
 

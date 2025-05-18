@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Generator, Any
+from typing import TYPE_CHECKING, Generator
 from pathlib import Path
 from contextlib import contextmanager
 import spiceypy as spice
@@ -6,11 +6,11 @@ from .. import io
 from ..logger import log
 from astropy import time
 import datetime
-from ..types import ObservationMode, Band
+from ..types import Band
 from ..coordinates import EOP
 from ..displacements import DISPLACEMENT_MODELS
 from ..delays import DELAY_MODELS
-from .source import Source, NearFieldSource, FarFieldSource
+from ..source import Source, NearFieldSource, FarFieldSource
 from .station import Station
 from .baseline import Baseline
 from .observation import Observation
@@ -61,6 +61,9 @@ class Experiment:
         # Load target information
         self.target = io.get_target_information(self.setup.general["target"])
 
+        # Ensure SPICE kernels for target
+        self.metakernel = self.__ensure_spice_kernels(self.target["short_name"])
+
         # Load sources
         self.sources = self.load_sources(self.__vex)
 
@@ -87,6 +90,27 @@ class Experiment:
 
         return None
 
+    def __ensure_spice_kernels(self, target: str) -> Path:
+        """Ensure SPICE kernels are available for the target
+
+        :param target: Name of the target
+        :return: Path to the metakernel
+        """
+
+        # Initialize SPICE kernel manager
+        kernel_manager = io.SpiceKernelManager(
+            mission=target,
+            kernels_folder=self.setup.resources["ephemerides"],
+        )
+
+        # Ensure metakernel
+        metakernel = kernel_manager.ensure_metakernel()
+
+        # Ensure SPICE kernels listed in the metakernel
+        kernel_manager.ensure_kernels(metakernel)
+
+        return metakernel
+
     def load_sources(self, vex: "io.Vex") -> dict[str, "Source"]:
         """Load sources from VEX file
 
@@ -98,35 +122,23 @@ class Experiment:
 
         sources: dict[str, "Source"] = {}
 
-        for name, source_info in vex.experiment_sources.items():
+        # Initialize far field sources from VEX file
+        for source_name in vex.experiment_source_names:
 
-            # Ensure type information is available in VEX file
-            if "source_type" not in source_info:
-                log.error(
-                    f"Failed to generate {name} source: "
-                    "Type information missing from VEX file"
+            # Load source data from VEX file
+            source_data = vex.load_source_data(source_name)
+
+            # Initialize FarFieldSource objects for calibrators
+            if source_data.source_type == "calibrator":
+
+                assert source_data.right_ascension is not None  # Sanity
+                assert source_data.declination is not None  # Sanity
+
+                sources[source_name] = FarFieldSource(
+                    source_data.name,
+                    source_data.right_ascension,
+                    source_data.declination,
                 )
-                exit(1)
-
-            # Ensure that coordinates are given in the right frame
-            if source_info["ref_coord_frame"] != "J2000":
-                raise NotImplementedError(
-                    f"Failed to generate {name} source: "
-                    f"Invalid reference frame {source_info['ref_coord_frame']}"
-                )
-
-            # Initialize far field sources
-            match source_info["source_type"]:
-                case "calibrator":
-                    sources[name] = FarFieldSource.from_experiment(self, name)
-                case "target":
-                    pass  # Initialized later
-                case _:
-                    log.error(
-                        f"Failed to generate {name} source: "
-                        f"Invalid type {source_info['source_type']}"
-                    )
-                    exit(1)
 
         # Initialize near field source
         sources[self.target["short_name"]] = NearFieldSource.from_experiment(
@@ -322,20 +334,13 @@ class Experiment:
         """Context manager to load SPICE kernels"""
 
         try:
-            if self.requires_spice:
-                log.debug("Loaded SPICE kernels")
-                metak = str(
-                    self.setup.resources["ephemerides"]
-                    / self.setup.general["target"]
-                    / "metak.tm"
-                )
-                spice.furnsh(metak)
+            log.debug("Loaded SPICE kernels")
+            spice.furnsh(str(self.metakernel))
 
             yield None
         finally:
-            if self.requires_spice:
-                log.debug("Unloaded SPICE kernels")
-                spice.kclear()
+            log.debug("Unloaded SPICE kernels")
+            spice.kclear()
 
         return None
 
