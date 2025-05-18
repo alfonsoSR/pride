@@ -5,7 +5,7 @@ import requests
 from astropy import time
 import numpy as np
 from scipy import interpolate
-
+from ... import utils, io
 from ...external import vienna
 import spiceypy as spice
 
@@ -24,71 +24,27 @@ class Tropospheric(Delay):
             "https://vmf.geo.tuwien.ac.at/trop_products/VLBI/V3GR/"
             "V3GR_OP/daily/"
         ),
-        "update_interval_hours": 6.0,
+        "update_interval_hours": 6.0,  # Ignored, this was for Petrov
     }
 
     def ensure_resources(self) -> None:
         """Check for site coordinates and site-wise tropospheric data"""
 
-        # # Download source of site coordinates if not present
-        # vlbi_ell = self.config["data"] / "vlbi.ell"
-        # vlbi_ell_url = self.etc["coords_url"] + vlbi_ell.name
-        # if not vlbi_ell.exists():
-        #     response = requests.get(vlbi_ell_url)
-        #     if not response.ok:
-        #         log.error(
-        #             "Failed to initialize tropospheric delay: "
-        #             f"Failed to download {vlbi_ell_url}"
-        #         )
-        #         exit(1)
-        #     vlbi_ell.write_bytes(response.content)
-
-        # Initialize date from which to look for tropospheric data
-        date: time.Time = time.Time(
-            self.exp.initial_epoch.mjd // 1,  # type: ignore
-            format="mjd",
-            scale="utc",
-        )
-        step = time.TimeDelta(
-            self.etc["update_interval_hours"] * 3600.0, format="sec"
-        )
-        date += (
-            self.exp.initial_epoch.datetime.hour  # type: ignore
-            // self.etc["update_interval_hours"]
-        ) * step
+        # Define range of dates to look for tropospheric data
+        date = utils.get_date_from_epoch(self.exp.initial_epoch)
+        step = time.TimeDelta(1.0, format="jd")
 
         # Download tropospheric data files
         coverage: dict[tuple[time.Time, time.Time], Path] = {}
         while True:
 
-            # Define filename and url
-            year: Any = date.datetime.year  # type: ignore
-            doy: Any = date.datetime.timetuple().tm_yday  # type: ignore
-            site_file = self.config["data"] / f"{year:04d}{doy:03d}.v3gr_r"
-            site_url = self.etc["coeffs_url"] + f"{year:04d}/{site_file.name}"
+            # Download V3GR file for epoch
+            site_file = io.download_v3gr_file_for_epoch(
+                date, self.config["data"]
+            )
 
-            # Download file if not present
-            site_file.parent.mkdir(parents=True, exist_ok=True)
-            if not site_file.exists():
-                log.info(f"Downloading {site_file}")
-                response = requests.get(site_url)
-                if not response.ok:
-                    log.error(
-                        "Failed to initialize tropospheric delay: "
-                        f"Failed to download {site_url}"
-                    )
-                    exit(1)
-                site_file.write_bytes(response.content)
-
-            # Add to coverage if necessary
-            if site_file not in coverage.values():
-                coverage[(date, date + step)] = site_file
-            else:
-                key = list(coverage.keys())[
-                    list(coverage.values()).index(site_file)
-                ]
-                coverage.pop(key)
-                coverage[(key[0], date + step)] = site_file
+            # Add coverage to dictionary
+            coverage[(date, date + step)] = site_file
 
             # Update date
             if date > self.exp.final_epoch:
@@ -110,59 +66,18 @@ class Tropospheric(Delay):
             if station.name in resources:
                 continue
 
-            # # Read site coordinates
-            # with self.resources["sites"].open() as f:
-
-            #     # Find site in file
-            #     _content: str = ""
-            #     for line in f:
-            #         if np.any(
-            #             [name in line for name in station.possible_names]
-            #         ):
-            #             _content = line
-            #             break
-
-            #     # Ensure that site is present
-            #     if _content == "":
-            #         log.error(
-            #             "Failed to initialize tropospheric delay: "
-            #             f"Site-wise data not available for {station.name}"
-            #         )
-            #         exit(1)
-
-            # lat, lon, height = [float(x) for x in _content.split()[1:4]]
-            # site_coords = coordinates.EarthLocation.from_geodetic(
-            #     lat=lat, lon=lon, height=height, ellipsoid="GRS80"
-            # )
-
             # Read site-wise tropospheric data
             _site_data = []
             for source in self.resources["coverage"].values():
 
-                # Find site in file
-                with source.open() as f:
-                    _content: str = ""
-                    for line in f:
-                        if np.any(
-                            [name in line for name in station.possible_names]
-                        ):
-                            _content = line
-                            break
+                # Initialize V3GR interface for source file
+                v3gr_interface = io.V3GRInterface(source)
 
-                # Ensure that site is present
-                if _content == "":
-                    log.error(
-                        "Failed to initialize tropospheric delay: "
-                        f"Site-wise data not available for {station.name}"
-                    )
-                    exit(1)
-
-                # Extract coefficients
-                content = _content.split()
-                _site_data.append(
-                    [float(x) for x in content[1:6]]
-                    + [float(x) for x in content[9:]]
+                # Extract coefficients for station
+                station_coefficients = (
+                    v3gr_interface.read_v3gr_data_for_station(station.name)
                 )
+                _site_data.append(station_coefficients)
 
             data = np.array(_site_data).T
 

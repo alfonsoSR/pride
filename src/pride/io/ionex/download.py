@@ -138,7 +138,7 @@ def download_ionex_file_for_date(
 ) -> Path:
     """Download and decompress IONEX file for a given date
 
-    The function finds the path to the IONEX file for the given date in the FTP server, downloads it to the specified directory, and decompresses it. The date must be at 00:00:00 UTC.
+    The function finds the path to the IONEX file for the given date in the FTP server, downloads it to the specified directory, and decompresses it. The directory is created if it doesn't exist.
 
     :param date: Date in UTC. Must be at 00:00:00 UTC.
     :param output_directory: Directory to save the downloaded file

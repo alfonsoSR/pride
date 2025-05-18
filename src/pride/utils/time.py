@@ -50,6 +50,17 @@ def get_year_from_epoch(epoch: "time.Time") -> int:
     return year
 
 
+def get_hour_from_epoch(epoch: "time.Time") -> int:
+    """Get hour from epoch
+
+    :param epoch: Epoch in UTC
+    :return: Hour component of the epoch
+    """
+
+    hour: int = int(epoch.datetime.hour)  # type: ignore
+    return hour
+
+
 def get_day_of_year_from_epoch(epoch: "time.Time") -> int:
     """Get day of year from epoch
 

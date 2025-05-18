@@ -1,4 +1,5 @@
 from pride import utils, io
+from pride.utils.misc import is_station_in_line
 import datetime
 import pytest
 import numpy as np
@@ -162,9 +163,78 @@ def test_gps_week_from_date(
     return None
 
 
-def test_small_time_utilities() -> None:
+@pytest.mark.parametrize(
+    ["epoch", "expected_year", "expected_day_of_year", "expected_hour"],
+    [
+        (
+            time.Time("2000-06-28T00:05:03", scale="utc"),
+            2000,
+            180,
+            0,
+        ),
+        (
+            time.Time("2000-06-28T13:12:05", scale="utc"),
+            2000,
+            180,
+            13,
+        ),
+    ],
+)
+def test_small_time_utilities(
+    epoch: "time.Time",
+    expected_year: int,
+    expected_day_of_year: int,
+    expected_hour: int,
+) -> None:
 
-    reference_epoch = time.Time("2000-06-28T13:12:05", scale="utc")
+    assert utils.get_year_from_epoch(epoch) == expected_year
+    assert utils.get_day_of_year_from_epoch(epoch) == expected_day_of_year
+    assert utils.get_hour_from_epoch(epoch) == expected_hour
 
-    assert utils.get_year_from_epoch(reference_epoch) == 2000
-    assert utils.get_day_of_year_from_epoch(reference_epoch) == 180
+
+@pytest.mark.parametrize(
+    ["station", "line", "found"],
+    [
+        (
+            "HARTRAO",
+            "HARTRAO xxxxxxxx xxxxxxxx xxxxxxx",
+            True,
+        ),  # Match beginning of line
+        (
+            "HARTRAO",
+            "xxxxxxxx xxxxxxxx HARTRAO xxxxxxx",
+            True,
+        ),  # Match middle of line
+        (
+            "HARTRAO",
+            "xxxxxxxx xxxxxxxx xxxxxxxx HARTRAO",
+            True,
+        ),  # Match end of line
+        (
+            "HARTRAO",
+            "xxxxxxx xxxxxxxx xxxxxxxx xxxxxxx",
+            False,
+        ),  # No match
+        (
+            "HARTRAO",
+            "HARTRAOX xxxxxxxx xxxxxxxx xxxxxxx",
+            False,
+        ),  # Partial match
+        (
+            "HARTRAO",
+            "",
+            False,
+        ),  # Empty line
+    ],
+    ids=[
+        "Match beginning of line",
+        "Match middle of line",
+        "Match end of line",
+        "No match",
+        "Partial match",
+        "Empty line",
+    ],
+)
+def test_is_station_in_line(station: str, line: str, found: bool) -> None:
+
+    assert is_station_in_line(station, line) == found

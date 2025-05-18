@@ -10,6 +10,7 @@ from .station_catalogs import (
     load_station_velocity_from_catalog,
 )
 from .ionex import download_ionex_file_for_date, IonexInterface
+from .vienna import download_v3gr_file_for_epoch, V3GRInterface
 
 # from .frequency import load_one_way_ramping_data, load_three_way_ramping_data
 
@@ -28,4 +29,6 @@ __all__ = [
     "load_station_velocity_from_catalog",
     "download_ionex_file_for_date",
     "IonexInterface",
+    "download_v3gr_file_for_epoch",
+    "V3GRInterface",
 ]
