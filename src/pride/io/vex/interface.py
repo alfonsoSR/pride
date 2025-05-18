@@ -276,7 +276,10 @@ class Vex:
         # If the source is a calibrator, load the coordinates
         if source_type == "calibrator":
             source_coordinates = coordinates.SkyCoord(
-                source_data["ra"], source_data["dec"], frame="icrs"
+                ra=source_data["ra"],
+                dec=source_data["dec"],
+                obstime=source_data["ref_coord_frame"],
+                frame="icrs",
             )
             right_ascension = float(source_coordinates.ra.to("rad").value)  # type: ignore
             declination = float(source_coordinates.dec.to("rad").value)  # type: ignore
