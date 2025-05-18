@@ -2,6 +2,7 @@ from pride import utils, io
 import datetime
 import pytest
 import numpy as np
+from astropy import time
 
 TOL = 1e-15
 
@@ -86,3 +87,84 @@ def test_scan_discretization(
         assert nobs >= internal_setup["min_obs_per_scan"]
 
     return None
+
+
+@pytest.mark.parametrize(
+    ["epoch", "expected_date"],
+    [
+        (
+            time.Time("2000-06-28T00:00:00", scale="utc"),
+            time.Time("2000-06-28T00:00:00", scale="utc"),
+        ),
+        (
+            time.Time("2000-06-28T14:07:00", scale="utc"),
+            time.Time("2000-06-28T00:00:00", scale="utc"),
+        ),
+        (
+            time.Time("2000-06-28T23:59:59.999", scale="utc"),
+            time.Time("2000-06-28T00:00:00", scale="utc"),
+        ),
+        (
+            time.Time("2000-06-28T00:00:00.001", scale="utc"),
+            time.Time("2000-06-28T00:00:00", scale="utc"),
+        ),
+    ],
+    ids=[
+        "Epoch is date",
+        "Non conflictive",
+        "Close to midnight of next day",
+        "Close to midnight of current day",
+    ],
+)
+def test_date_from_epoch(
+    epoch: "time.Time", expected_date: "time.Time"
+) -> None:
+
+    date = utils.get_date_from_epoch(epoch)
+    difference = (date - expected_date).to_value("s")
+    assert difference == 0
+
+    return None
+
+
+@pytest.mark.parametrize(
+    ["date", "expected_week", "fails"],
+    [
+        (
+            time.Time("2000-06-28T00:00:00", scale="utc"),
+            1068,
+            False,
+        ),
+        (
+            time.Time("2000-06-28T00:04:00", scale="utc"),
+            0,
+            True,
+        ),
+    ],
+    ids=[
+        "Valid date",
+        "Invalid date",
+    ],
+)
+def test_gps_week_from_date(
+    date: "time.Time", expected_week: int, fails: bool
+) -> None:
+
+    # Test if the function fails as expected
+    if fails:
+        with pytest.raises(SystemExit):
+            _ = utils.get_gps_week_for_date(date)
+        return None
+
+    week = utils.get_gps_week_for_date(date)
+    assert week == expected_week
+
+    return None
+
+
+def test_small_time_utilities() -> None:
+
+    reference_epoch = time.Time("2000-06-28T13:12:05", scale="utc")
+
+    assert utils.get_year_from_epoch(reference_epoch) == 2000
+    assert utils.get_day_of_year_from_epoch(reference_epoch) == 180

@@ -1,9 +1,11 @@
 import numpy as np
 from astropy import units
-from . import io
-import math
-from .logger import log
 import datetime
+from ..logger import log
+from .. import io
+import math
+from typing import Sequence, Callable
+from scipy import interpolate
 
 
 def eops_arcsec2rad(eops: np.ndarray) -> np.ndarray:
