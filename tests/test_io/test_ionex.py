@@ -26,8 +26,8 @@ from scipy import interpolate
         ),
     ],
     ids=[
-        "New format",
-        "Old format",
+        "New format: date",
+        "Old format: date",
     ],
 )
 def test_ionex_file_name(epoch: "time.Time", expected_path: str) -> None:

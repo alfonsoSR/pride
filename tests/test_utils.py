@@ -141,10 +141,16 @@ def test_date_from_epoch(
             0,
             True,
         ),
+        (
+            time.Time("2000-06-28T00:00:00.001", scale="utc"),
+            1068,
+            False,
+        ),
     ],
     ids=[
         "Valid date",
         "Invalid date",
+        "Valid, possibly conflictive",
     ],
 )
 def test_gps_week_from_date(
@@ -238,3 +244,20 @@ def test_small_time_utilities(
 def test_is_station_in_line(station: str, line: str, found: bool) -> None:
 
     assert is_station_in_line(station, line) == found
+
+
+@pytest.mark.parametrize(
+    ["epoch", "is_date"],
+    [
+        (time.Time("2000-06-28T00:00:00"), True),
+        (time.Time("2000-06-28T00:00:00.0000"), True),
+        (time.Time("2000-06-28T00:00:00.009"), True),
+        (time.Time("2000-06-28T00:00:00.01"), False),
+        (time.Time("2000-06-28T00:00:01"), False),
+    ],
+)
+def test_epoch_is_date(epoch: "time.Time", is_date: bool) -> None:
+
+    assert utils.epoch_is_date(epoch) == is_date
+
+    return None

@@ -21,10 +21,10 @@ def get_ionex_path_for_date(date: "time.Time") -> str:
     :return file_name: Path to the IONEX file for the given date
     """
 
-    # Ensure that the input is a date, not date and time
-    if (date - utils.get_date_from_epoch(date)).to_value("s") != 0:
+    # Ensure that the input is a date, not a datetime
+    if not utils.epoch_is_date(date):
         log.error(
-            f"Failed to get URL for IONEX file for {date.iso}: "
+            f"Failed to get URL for IONEX file for {date.isot}: "
             "Date should be at 00:00:00 UTC"
         )
         exit(1)

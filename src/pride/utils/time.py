@@ -4,6 +4,19 @@ from ..logger import log
 GPS_WEEK_REFERENCE = time.Time("1980-01-06T00:00:00", scale="utc")
 
 
+def epoch_is_date(epoch: "time.Time") -> bool:
+    """Check if the epoch differs from a date by less than 0.01 seconds
+
+    Checks if the time part of the ISOT representation of the epoch is 00:00:00.00, meaning that anything differing from a date by less than 0.01 seconds is considered a date.
+
+    :param epoch: Epoch as a Time object
+    :return: True if the epoch is a date, False otherwise
+    """
+
+    epoch_isot_str: str = epoch.isot  # type: ignore
+    return epoch_isot_str.split("T")[1][:11] == "00:00:00.00"
+
+
 def get_date_from_epoch(epoch: "time.Time") -> "time.Time":
     """Time object for 00:00:00 UTC of the given epoch
 
@@ -27,9 +40,9 @@ def get_gps_week_for_date(date: "time.Time") -> int:
     """
 
     # Ensure that the input is a date, not date and time
-    if (date - get_date_from_epoch(date)).to_value("s") != 0:
+    if not epoch_is_date(date):
         log.error(
-            f"Failed to get GPS week for {date.iso}: "
+            f"Failed to get GPS week for {date.isot}: "
             "Date should be at 00:00:00 UTC"
         )
         exit(1)

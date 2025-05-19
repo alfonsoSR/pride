@@ -5,6 +5,7 @@ from .time import (
     get_year_from_epoch,
     get_day_of_year_from_epoch,
     get_hour_from_epoch,
+    epoch_is_date,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "get_year_from_epoch",
     "get_day_of_year_from_epoch",
     "get_hour_from_epoch",
+    "epoch_is_date",
 ]
