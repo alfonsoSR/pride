@@ -1,0 +1,1084 @@
+VEX_rev = 1.5;
+*    SCHED vers: Release 11.6; April 2020
+*    VEX/SCHED:  1.5.87
+*    Other versions: Sched:  11.6  Plot: 1.06  JPL-ephem: 0.00
+*------------------------------------------------------------------------------
+$GLOBAL;
+     ref $EXPER = EC094A;
+     ref $EOP = EOP291;
+*                                                      +------------+
+*                         PI revision number:          |    1.0000  |
+*                                                      +------------+
+*------------------------------------------------------------------------------
+$EXPER;
+*
+def EC094A;
+     exper_name = EC094A;
+     exper_description = "JUICE tracking";
+     PI_name = "Giuseppe Cimo";
+     PI_email = cimo@jive.eu;
+*    address:   JIVE
+*
+*
+*
+*    phone:     +31 521 596545
+*    during obs:
+*    fax:
+*
+*    year, doy: 2023, 292
+*    date     : Thu 19 Oct 2023
+*    MJD      : 60236
+     exper_nominal_start=2023y292d14h00m00s;
+     exper_nominal_stop=2023y292d16h01m00s;
+*
+     target_correlator = JIVE;
+*
+*    integr_time    :     2.000 s
+*    number_channels:   256
+*    number_antenna :  2
+*    cross_polarize : No
+*    weight_func    : UNIFORM
+*    distrib_medium : DAT
+*    distrib_format : FITS
+*    source_pos_cat : STANDARD
+*    distribute_to  :
+*                     JIVE
+*                     Oude Hoogeveensedijk 4
+*                     7991PD Dwingeloo
+*                     The Netherlands
+*
+enddef;
+*------------------------------------------------------------------------------
+$MODE;
+*
+def sess323.X256R;
+     ref $PROCEDURES = Mode_01;
+     ref $FREQ = 8400.00MHz4x16MHz:Wb:Ef:O6:Tr:Hh:Wz;
+     ref $FREQ = 8400.00MHz4x16MHz#02:Mc;
+     ref $IF = LO@8012MHzRPolNoTone:Wb;
+     ref $IF = LO@7600MHzRPolNoTone:Ef;
+     ref $IF = LO@8080MHzRPolNoTone#02:Mc;
+     ref $IF = LO@8080MHzRPolNoTone:O6:Hh:Wz;
+     ref $IF = LO@7650MHzRPolNoTone:Tr;
+     ref $BBC = 4BBCs#02:Wb:O6:Tr:Hh:Wz;
+     ref $BBC = 4BBCs:Ef;
+     ref $BBC = 4BBCs#03:Mc;
+     ref $TRACKS = VDIF.4Ch2bit1to1:Wb:Ef:Mc:O6:Tr:Hh:Wz;
+     ref $THREADS = EfThreads:Ef;
+     ref $THREADS = HhThreads:O6:Tr:Wz:Hh:Wb;
+     ref $THREADS = McThreads:Mc;
+*    ref $HEAD_POS = DiskVoid <= obsolete definition
+     ref $ROLL = NoRoll:Wb:Ef:Mc:O6:Tr:Hh:Wz;
+*    ref $PASS_ORDER = DiskVoid <= obsolete definition
+     ref $PHASE_CAL_DETECT = NoDetect:Wb:Ef:Mc:O6:Tr:Hh:Wz;
+enddef;
+*------------------------------------------------------------------------------
+$STATION;
+*
+def Wb;
+     ref $SITE = WSTRBORK;
+     ref $ANTENNA = WSTRBORK;
+     ref $DAS = 2DBBC+NONE<;
+     ref $TAPELOG_OBS = WB;
+     ref $CLOCK = WB;
+enddef;
+*
+def Ef;
+     ref $SITE = EFLSBERG;
+     ref $ANTENNA = EFLSBERG;
+     ref $DAS = 2DBBC+NONE<;
+     ref $TAPELOG_OBS = EF;
+     ref $CLOCK = EF;
+enddef;
+*
+def Mc;
+     ref $SITE = MEDICINA;
+     ref $ANTENNA = MEDICINA;
+     ref $DAS = 2DBBC+NONE<;
+     ref $TAPELOG_OBS = MC;
+     ref $CLOCK = MC;
+enddef;
+*
+def O6;
+     ref $SITE = ONSALA60;
+     ref $ANTENNA = ONSALA60;
+     ref $DAS = 2DBBC+NONE<;
+     ref $TAPELOG_OBS = O6;
+     ref $CLOCK = O6;
+enddef;
+*
+def Tr;
+     ref $SITE = TORUN;
+     ref $ANTENNA = TORUN;
+     ref $DAS = 2DBBC+NONE<;
+     ref $TAPELOG_OBS = TR;
+     ref $CLOCK = TR;
+enddef;
+*
+def Hh;
+     ref $SITE = HART;
+     ref $ANTENNA = HART;
+     ref $DAS = 2DBBC+NONE<;
+     ref $TAPELOG_OBS = HH;
+     ref $CLOCK = HH;
+enddef;
+*
+def Wz;
+     ref $SITE = WETTZELL;
+     ref $ANTENNA = WETTZELL;
+     ref $DAS = 2DBBC+NONE<;
+     ref $TAPELOG_OBS = WZ;
+     ref $CLOCK = WZ;
+enddef;
+*------------------------------------------------------------------------------
+$PROCEDURES;
+*
+def Mode_01;
+     procedure_name_prefix =  "01";
+     tape_change =  420 sec;
+     headstack_motion =    6 sec;
+     new_source_command =    5 sec;
+     new_tape_setup =   20 sec;
+     setup_always = on :  20 sec;
+     parity_check = off : 100 sec;
+     tape_prepass = off : 600 sec;
+     preob_cal  = on :  10 sec : preob;
+     midob_cal  = on :  15 sec : midob;
+     postob_cal = on :   0 sec : postob;
+enddef;
+*------------------------------------------------------------------------------
+$SITE;
+*
+def WSTRBORK;
+     site_type = fixed;
+     site_name = WSTRBORK;
+     site_ID = Wb;
+*    elev=   70.97 long=-006:35:38. lat= 52:54:55.1
+*    site_position = 3828750.69690 m:  442589.21760 m: 5064921.57000 m;
+     site_position = 3828750.33434 m:  442589.67422 m: 5064921.80394 m;
+*    First line below is VEX standard format.  Use only when readers are ready.
+enddef;
+*
+def EFLSBERG;
+     site_type = fixed;
+     site_name = EFLSBERG;
+     site_ID = Ef;
+*    elev=  416.71 long=-006:53:01. lat= 50:31:29.4
+*    site_position = 4033947.15250 m:  486990.89610 m: 4900431.06040 m;
+     site_position = 4033947.09813 m:  486990.95974 m: 4900431.10132 m;
+*    First line below is VEX standard format.  Use only when readers are ready.
+     horizon_map_az =  0.0 deg: 10.0: 20.0: 30.0: 40.0: 50.0: 60.0: 70.0: 80.0:
+                                90.0:100.0:110.0:120.0:130.0:140.0:150.0:160.0:
+                               170.0:180.0:190.0:200.0:210.0:220.0:230.0:240.0:
+                               250.0:260.0:270.0:280.0:290.0:300.0:310.0:320.0:
+                               330.0:340.0:350.0:360.0;
+     horizon_map_el = 11.0 deg: 13.0: 16.0: 19.0: 21.0: 21.0: 21.0: 20.0: 18.0:
+                                15.0: 16.0: 16.0: 15.0: 15.0: 13.0:  8.0:  7.0:
+                                 7.0:  7.0:  7.0:  9.0: 11.0: 11.0: 11.0: 10.0:
+                                 9.0:  8.0: 12.0: 14.0: 14.0: 14.0: 14.0: 13.0:
+                                 8.0:  7.0:  8.0: 11.0;
+enddef;
+*
+def MEDICINA;
+     site_type = fixed;
+     site_name = MEDICINA;
+     site_ID = Mc;
+*    elev=   67.14 long=-011:38:49. lat= 44:31:13.8
+*    site_position = 4461369.56820 m:  919597.24890 m: 4449559.47020 m;
+     site_position = 4461369.49921 m:  919597.32013 m: 4449559.51579 m;
+*    First line below is VEX standard format.  Use only when readers are ready.
+enddef;
+*
+def ONSALA60;
+     site_type = fixed;
+     site_name = ONSALA60;
+     site_ID = O6;
+*    elev=   59.34 long=-011:55:34. lat= 57:23:45.0
+*    site_position = 3370605.70350 m:  711917.81460 m: 5349830.98520 m;
+     site_position = 3370605.64944 m:  711917.86973 m: 5349831.02657 m;
+*    First line below is VEX standard format.  Use only when readers are ready.
+enddef;
+*
+def TORUN;
+     site_type = fixed;
+     site_name = TORUN;
+     site_ID = Tr;
+*    elev=  133.61 long=-018:33:50. lat= 53:05:43.7
+*    site_position = 3638558.51000 m: 1221969.72000 m: 5077036.76000 m;
+     site_position = 3638558.08098 m: 1221970.16081 m: 5077036.96151 m;
+*    First line below is VEX standard format.  Use only when readers are ready.
+     horizon_map_az =  0.0 deg:360.0;
+     horizon_map_el =  2.0 deg:  2.0;
+enddef;
+*
+def HART;
+     site_type = fixed;
+     site_name = HART;
+     site_ID = Hh;
+*    elev= 1415.72 long=-027:41:07. lat=-25:53:23.1
+*    site_position = 5085442.77210 m: 2668263.93000 m:-2768696.62990 m;
+     site_position = 5085442.77168 m: 2668264.00469 m:-2768696.56634 m;
+*    First line below is VEX standard format.  Use only when readers are ready.
+     horizon_map_az =  0.0 deg: 10.0: 14.0: 19.0: 23.0: 26.0: 29.0: 31.0: 55.0:
+                                63.0: 72.0: 95.0:104.0:110.0:114.0:119.0:125.0:
+                               131.0:138.0:147.0:159.0:172.0:178.0:182.0:188.0:
+                               201.0:213.0:222.0:229.0:235.0:241.0:246.0:250.0:
+                               256.0:260.0:264.0:270.0:279.0:285.0:293.0:302.0:
+                               311.0:318.0:325.0:331.0:334.0:337.0:341.0:346.0:
+                               350.0:360.0;
+     horizon_map_el = 19.0 deg: 18.0: 17.0: 15.0: 13.0: 11.0:  9.0:  7.0:  6.0:
+                                 6.0:  7.0:  8.0:  9.0: 11.0: 13.0: 15.0: 17.0:
+                                19.0: 21.0: 23.0: 25.0: 26.0: 33.0: 33.0: 26.0:
+                                25.0: 23.0: 21.0: 19.0: 17.0: 15.0: 13.0: 11.0:
+                                 9.0:  7.0:  5.0:  3.0:  3.0:  5.0:  7.0:  9.0:
+                                10.0: 10.0:  9.0:  9.0: 11.0: 13.0: 15.0: 17.0:
+                                18.0: 19.0;
+enddef;
+*
+def WETTZELL;
+     site_type = fixed;
+     site_name = WETTZELL;
+     site_ID = Wz;
+*    elev=  669.13 long=-012:52:38. lat= 49:08:42.0
+*    site_position = 4075539.51730 m:  931735.64970 m: 4801629.60280 m;
+     site_position = 4075539.45629 m:  931735.71451 m: 4801629.64239 m;
+*    First line below is VEX standard format.  Use only when readers are ready.
+enddef;
+*------------------------------------------------------------------------------
+$ANTENNA;
+*
+def WSTRBORK;
+     axis_type = ha : dec;
+     antenna_motion = dec :  18.0 deg/min : 10 sec;  *    0.100 deg/sec/sec
+     antenna_motion = ha :  18.0 deg/min : 10 sec;  *    0.100 deg/sec/sec
+     axis_offset = 4.95000 m;
+enddef;
+*
+def EFLSBERG;
+     axis_type = az : el;
+     antenna_motion = el :  15.0 deg/min : 16 sec;  *    0.018 deg/sec/sec
+     antenna_motion = az :  25.0 deg/min : 16 sec;  *    0.018 deg/sec/sec
+     pointing_sector = &ccw  : az :  34.00 deg: 120.00 deg: el :  9.00 deg: 89.00 deg; * CWZ 1
+     pointing_sector = &n    : az : 120.00 deg: 394.00 deg: el :  9.00 deg: 89.00 deg; * CWZ 2
+     pointing_sector = &cw   : az : 394.00 deg: 480.00 deg: el :  9.00 deg: 89.00 deg; * CWZ 3
+     axis_offset = 0.01310 m;
+enddef;
+*
+def MEDICINA;
+     axis_type = az : el;
+     antenna_motion = el :  30.0 deg/min :  3 sec;  *    0.310 deg/sec/sec
+     antenna_motion = az :  45.0 deg/min :  3 sec;  *    0.820 deg/sec/sec
+     pointing_sector = &ccw  : az : 270.00 deg: 450.00 deg: el :  5.00 deg: 88.50 deg; * CWZ 1
+     pointing_sector = &n    : az : 450.00 deg: 630.00 deg: el :  5.00 deg: 88.50 deg; * CWZ 2
+     pointing_sector = &cw   : az : 630.00 deg: 810.00 deg: el :  5.00 deg: 88.50 deg; * CWZ 3
+     axis_offset = 1.82780 m;
+enddef;
+*
+def ONSALA60;
+     axis_type = az : el;
+     antenna_motion = el :  57.0 deg/min :  5 sec;  *    0.400 deg/sec/sec
+     antenna_motion = az : 180.0 deg/min :  5 sec;  *    0.300 deg/sec/sec
+     pointing_sector = &ccw  : az : 340.00 deg: 380.00 deg: el :  5.00 deg: 87.00 deg; * CWZ 1
+     pointing_sector = &n    : az : 380.00 deg: 700.00 deg: el :  5.00 deg: 87.00 deg; * CWZ 2
+     pointing_sector = &cw   : az : 700.00 deg: 740.00 deg: el :  5.00 deg: 87.00 deg; * CWZ 3
+     axis_offset = -0.00220 m;
+enddef;
+*
+def TORUN;
+     axis_type = az : el;
+     antenna_motion = el :  16.0 deg/min :  5 sec;  *    0.030 deg/sec/sec
+     antenna_motion = az :  30.0 deg/min :  5 sec;  *    0.050 deg/sec/sec
+     pointing_sector = &ccw  : az : -80.00 deg:  80.00 deg: el :  3.00 deg: 90.00 deg; * CWZ 1
+     pointing_sector = &n    : az :  80.00 deg: 280.00 deg: el :  3.00 deg: 90.00 deg; * CWZ 2
+     pointing_sector = &cw   : az : 280.00 deg: 440.00 deg: el :  3.00 deg: 90.00 deg; * CWZ 3
+     pointing_sector = &ccwp : az : -80.00 deg:  80.00 deg: el : 90.00 deg: 93.00 deg; * CWZ 4
+     pointing_sector = &np   : az :  80.00 deg: 280.00 deg: el : 90.00 deg: 93.00 deg; * CWZ 5
+     pointing_sector = &cwp  : az : 280.00 deg: 440.00 deg: el : 90.00 deg: 93.00 deg; * CWZ 6
+     axis_offset = 0.00000 m;
+enddef;
+*
+def HART;
+     axis_type = ha : dec;
+     antenna_motion = dec :  30.0 deg/min : 20 sec;  *    0.071 deg/sec/sec
+     antenna_motion = ha :  30.0 deg/min : 20 sec;  *    0.071 deg/sec/sec
+     axis_offset = 6.69340 m;
+enddef;
+*
+def WETTZELL;
+     axis_type = az : el;
+     antenna_motion = el :  90.0 deg/min :  2 sec;  * 1000.000 deg/sec/sec
+     antenna_motion = az : 240.0 deg/min :  2 sec;  * 1000.000 deg/sec/sec
+     pointing_sector = &ccw  : az : 251.50 deg: 471.00 deg: el :  5.00 deg: 89.00 deg; * CWZ 1
+     pointing_sector = &n    : az : 471.00 deg: 611.50 deg: el :  5.00 deg: 89.00 deg; * CWZ 2
+     pointing_sector = &cw   : az : 611.50 deg: 831.00 deg: el :  5.00 deg: 89.00 deg; * CWZ 3
+     axis_offset = 0.00000 m;
+enddef;
+*------------------------------------------------------------------------------
+$DAS;
+*
+def 2DBBC+NONE<;
+     record_transport_type = Mark5C;
+     electronics_rack_type = DBBC;
+     number_drives = 2;
+     headstack = 1 :            : 0 ;
+     headstack = 2 :            : 1 ;
+     tape_motion = adaptive : 0 min: 0 min: 10 sec;
+enddef;
+*------------------------------------------------------------------------------
+$SOURCE;
+*
+def J1642+3948;
+     source_name = J1642+3948;
+     source_type = calibrator;
+*    this source had calibrator code: V
+*    alternate source name: 3C345
+*    alternate source name: 1641+399
+*    alternate source name: J1642+39
+*    GSFC 2016a X/S astro solution,  53724 observations.
+     ra = 16h42m58.8099666s; dec =  39d48'36.993986"; ref_coord_frame = J2000;
+*    ra = 16h41m17.6062292s; dec =  39d54'10.814925"; ref_coord_frame = B1950;
+*    ra = 16h43m45.5501545s; dec =  39d46'07.392293"; ref_coord_frame = Date;
+enddef;
+*
+def J1720-2258;
+     source_name = J1720-2258;
+     source_type = calibrator;
+*    this source had calibrator code: V
+*    alternate source name: 1717-229
+*    GSFC 2016a X/S astro solution,     77 observations.
+     ra = 17h20m43.5569958s; dec = -22d58'24.838423"; ref_coord_frame = J2000;
+*    ra = 17h17m41.9271416s; dec = -22d55'27.406228"; ref_coord_frame = B1950;
+*    ra = 17h22m08.5181884s; dec = -22d59'51.715819"; ref_coord_frame = Date;
+enddef;
+*
+def J1726-2258;
+     source_name = J1726-2258;
+     source_type = calibrator;
+*    this source had calibrator code: V
+*    alternate source name: 1723-229
+*    GSFC 2016a X/S astro solution,    126 observations.
+     ra = 17h26m58.9045179s; dec = -22d58'01.545765"; ref_coord_frame = J2000;
+*    ra = 17h23m57.1518338s; dec = -22d55'31.097496"; ref_coord_frame = B1950;
+*    ra = 17h28m23.9533787s; dec = -22d59'15.807248"; ref_coord_frame = Date;
+enddef;
+*
+def J1800+3848;
+     source_name = J1800+3848;
+     source_type = calibrator;
+*    this source had calibrator code: V
+*    alternate source name: 1758+388
+*    alternate source name: J1800+38
+*    GSFC 2016a X/S astro solution,   5095 observations.
+     ra = 18h00m24.7653628s; dec =  38d48'30.697484"; ref_coord_frame = J2000;
+*    ra = 17h58m44.7039537s; dec =  38d48'32.473499"; ref_coord_frame = B1950;
+*    ra = 18h01m11.2457772s; dec =  38d48'40.110905"; ref_coord_frame = Date;
+enddef;
+*
+def 141300;
+     source_name = 141300;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m50.7651000s; dec = -23d04'44.903460"; ref_coord_frame = J2000;
+*    ra = 17h15m49.0360810s; dec = -23d01'39.382400"; ref_coord_frame = B1950;
+*    ra = 17h20m15.7636562s; dec = -23d06'15.587753"; ref_coord_frame = Date;
+enddef;
+*
+def 141900;
+     source_name = 141900;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m50.8670710s; dec = -23d04'44.967504"; ref_coord_frame = J2000;
+*    ra = 17h15m49.1379875s; dec = -23d01'39.453746"; ref_coord_frame = B1950;
+*    ra = 17h20m15.8656655s; dec = -23d06'15.648390"; ref_coord_frame = Date;
+enddef;
+*
+def 142700;
+     source_name = 142700;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.0028680s; dec = -23d04'45.052680"; ref_coord_frame = J2000;
+*    ra = 17h15m49.2736986s; dec = -23d01'39.548646"; ref_coord_frame = B1950;
+*    ra = 17h20m16.0015135s; dec = -23d06'15.729029"; ref_coord_frame = Date;
+enddef;
+*
+def 143300;
+     source_name = 143300;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.1045870s; dec = -23d04'45.116436"; ref_coord_frame = J2000;
+*    ra = 17h15m49.3753533s; dec = -23d01'39.619685"; ref_coord_frame = B1950;
+*    ra = 17h20m16.1032707s; dec = -23d06'15.789386"; ref_coord_frame = Date;
+enddef;
+*
+def 144100;
+     source_name = 144100;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.2400430s; dec = -23d04'45.201252"; ref_coord_frame = J2000;
+*    ra = 17h15m49.5107236s; dec = -23d01'39.714200"; ref_coord_frame = B1950;
+*    ra = 17h20m16.2387775s; dec = -23d06'15.869676"; ref_coord_frame = Date;
+enddef;
+*
+def 144700;
+     source_name = 144700;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.3415100s; dec = -23d04'45.264720"; ref_coord_frame = J2000;
+*    ra = 17h15m49.6121265s; dec = -23d01'39.784934"; ref_coord_frame = B1950;
+*    ra = 17h20m16.3402826s; dec = -23d06'15.929754"; ref_coord_frame = Date;
+enddef;
+*
+def 145500;
+     source_name = 145500;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.4766300s; dec = -23d04'45.349212"; ref_coord_frame = J2000;
+*    ra = 17h15m49.7471612s; dec = -23d01'39.879101"; ref_coord_frame = B1950;
+*    ra = 17h20m16.4754532s; dec = -23d06'16.009732"; ref_coord_frame = Date;
+enddef;
+*
+def 150100;
+     source_name = 150100;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.5778460s; dec = -23d04'45.412392"; ref_coord_frame = J2000;
+*    ra = 17h15m49.8483132s; dec = -23d01'39.949528"; ref_coord_frame = B1950;
+*    ra = 17h20m16.5767072s; dec = -23d06'16.069530"; ref_coord_frame = Date;
+enddef;
+*
+def 150900;
+     source_name = 150900;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.7126270s; dec = -23d04'45.496524"; ref_coord_frame = J2000;
+*    ra = 17h15m49.9830092s; dec = -23d01'40.043311"; ref_coord_frame = B1950;
+*    ra = 17h20m16.7115387s; dec = -23d06'16.149159"; ref_coord_frame = Date;
+enddef;
+*
+def 151900;
+     source_name = 151900;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.8808360s; dec = -23d04'45.601356"; ref_coord_frame = J2000;
+*    ra = 17h15m50.1511120s; dec = -23d01'40.160188"; ref_coord_frame = B1950;
+*    ra = 17h20m16.8798107s; dec = -23d06'16.248371"; ref_coord_frame = Date;
+enddef;
+*
+def 152500;
+     source_name = 152500;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m51.9816140s; dec = -23d04'45.664104"; ref_coord_frame = J2000;
+*    ra = 17h15m50.2518265s; dec = -23d01'40.230152"; ref_coord_frame = B1950;
+*    ra = 17h20m16.9806264s; dec = -23d06'16.307751"; ref_coord_frame = Date;
+enddef;
+*
+def 153300;
+     source_name = 153300;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m52.1158200s; dec = -23d04'45.747588"; ref_coord_frame = J2000;
+*    ra = 17h15m50.3859479s; dec = -23d01'40.323246"; ref_coord_frame = B1950;
+*    ra = 17h20m17.1148827s; dec = -23d06'16.386751"; ref_coord_frame = Date;
+enddef;
+*
+def 153900;
+     source_name = 153900;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m52.2163460s; dec = -23d04'45.810048"; ref_coord_frame = J2000;
+*    ra = 17h15m50.4864105s; dec = -23d01'40.392904"; ref_coord_frame = B1950;
+*    ra = 17h20m17.2154463s; dec = -23d06'16.445853"; ref_coord_frame = Date;
+enddef;
+*
+def 154700;
+     source_name = 154700;
+     source_type = target;
+*    this source had calibrator code:
+     ra = 17h18m52.3502140s; dec = -23d04'45.893172"; ref_coord_frame = J2000;
+*    ra = 17h15m50.6201942s; dec = -23d01'40.485614"; ref_coord_frame = B1950;
+*    ra = 17h20m17.3493644s; dec = -23d06'16.524504"; ref_coord_frame = Date;
+enddef;
+*------------------------------------------------------------------------------
+$FREQ;
+*
+def 8400.00MHz4x16MHz;
+* mode =  1    stations =Wb:Ef:O6:Tr:Hh:Wz
+     sample_rate =    32.000 Ms/sec;  * (2bits/sample)
+     chan_def = :  8400.00 MHz : U :  16.00 MHz : &CH01 : &BBC01 : &NoCal; *Rcp
+     chan_def = :  8416.00 MHz : U :  16.00 MHz : &CH02 : &BBC02 : &NoCal; *Rcp
+     chan_def = :  8432.00 MHz : U :  16.00 MHz : &CH03 : &BBC03 : &NoCal; *Rcp
+     chan_def = :  8448.00 MHz : U :  16.00 MHz : &CH04 : &BBC04 : &NoCal; *Rcp
+enddef;
+*
+def 8400.00MHz4x16MHz#02;
+* mode =  1    stations =Mc
+     sample_rate =    32.000 Ms/sec;  * (2bits/sample)
+     chan_def = :  8400.00 MHz : U :  16.00 MHz : &CH01 : &BBC09 : &NoCal; *Rcp
+     chan_def = :  8416.00 MHz : U :  16.00 MHz : &CH02 : &BBC10 : &NoCal; *Rcp
+     chan_def = :  8432.00 MHz : U :  16.00 MHz : &CH03 : &BBC11 : &NoCal; *Rcp
+     chan_def = :  8448.00 MHz : U :  16.00 MHz : &CH04 : &BBC12 : &NoCal; *Rcp
+enddef;
+*------------------------------------------------------------------------------
+$IF;
+*
+def LO@7600MHzRPolNoTone;
+* mode =  1    stations =Ef
+*     if_def = &IF_A3 : A3 : R :  7600.00 MHz : U ; * PCall off!   0.0   0.0  NA     0 NA
+     if_def = &IF_A3 : A3 : R :  9136.00 MHz : L ; * PCall off!   0.0   0.0  NA     0 NA
+enddef;
+*
+def LO@8012MHzRPolNoTone;
+* mode =  1    stations =Wb
+     if_def = &IF_A1 : A1 : R :  8012.00 MHz : U ; * PCall off!   0.0   0.0  NA     0 NA
+enddef;
+*
+def LO@8080MHzRPolNoTone;
+* mode =  1    stations =O6:Hh:Wz
+     if_def = &IF_A1 : A1 : R :  8080.00 MHz : U ; * PCall off!   0.0   0.0  NA     0 NA
+enddef;
+*
+def LO@8080MHzRPolNoTone#02;
+* mode =  1    stations =Mc
+     if_def = &IF_C1 : C1 : R :  8080.00 MHz : U ; * PCall off!   0.0   0.0  NA     0 NA
+enddef;
+*
+def LO@7650MHzRPolNoTone;
+* mode =  1    stations =Tr
+     if_def = &IF_A1 : A1 : R :  7650.00 MHz : U ; * PCall off!   0.0   0.0  NA     0 NA
+enddef;
+*------------------------------------------------------------------------------
+$BBC;
+*
+def 4BBCs;
+* mode =  1    stations =Ef
+     BBC_assign = &BBC01 :  1 : &IF_A3;
+     BBC_assign = &BBC02 :  2 : &IF_A3;
+     BBC_assign = &BBC03 :  3 : &IF_A3;
+     BBC_assign = &BBC04 :  4 : &IF_A3;
+enddef;
+*
+def 4BBCs#02;
+* mode =  1    stations =Wb:O6:Tr:Hh:Wz
+     BBC_assign = &BBC01 :  1 : &IF_A1;
+     BBC_assign = &BBC02 :  2 : &IF_A1;
+     BBC_assign = &BBC03 :  3 : &IF_A1;
+     BBC_assign = &BBC04 :  4 : &IF_A1;
+enddef;
+*
+def 4BBCs#03;
+* mode =  1    stations =Mc
+     BBC_assign = &BBC09 :  9 : &IF_C1;
+     BBC_assign = &BBC10 : 10 : &IF_C1;
+     BBC_assign = &BBC11 : 11 : &IF_C1;
+     BBC_assign = &BBC12 : 12 : &IF_C1;
+enddef;
+*------------------------------------------------------------------------------
+$PHASE_CAL_DETECT;
+*
+def NoDetect;
+* mode =  1    stations =Wb:Ef:Mc:O6:Tr:Hh:Wz
+     phase_cal_detect = &NoCal;
+enddef;
+*------------------------------------------------------------------------------
+$TRACKS;
+*
+def VDIF.4Ch2bit1to1;
+* mode =  1    stations =Wb:Ef:Mc:O6:Tr:Hh:Wz
+*    firmware_type = DBBC_DDC;
+*    format = VDIF, and fan-out = 1
+*    mode requires  32.00Mb/s/tr; stations using disks
+     track_frame_format = VDIF5032;
+     fanout_def =   : &CH01 : sign : 1:  1;
+     fanout_def =   : &CH01 :  mag : 1:  1;
+     fanout_def =   : &CH02 : sign : 1:  2;
+     fanout_def =   : &CH02 :  mag : 1:  2;
+     fanout_def =   : &CH03 : sign : 1:  3;
+     fanout_def =   : &CH03 :  mag : 1:  3;
+     fanout_def =   : &CH04 : sign : 1:  4;
+     fanout_def =   : &CH04 :  mag : 1:  4;
+enddef;
+*------------------------------------------------------------------------------
+*$BITSTREAMS;
+*
+*------------------------------------------------------------------------------
+$THREADS;
+*
+def HhThreads;
+*   Stations = Hh:O6:Tr:Wb:Wz
+*   Modes = sess323.X256R
+  format = VDIF : : 256;
+  thread = 0 : 1 : 1 : 256 : 4 : 2 : : : 8000;
+  channel = &CH01 : 0 : 0;
+  channel = &CH02 : 0 : 1;
+  channel = &CH03 : 0 : 2;
+  channel = &CH04 : 0 : 3;
+enddef;
+*
+def EfThreads;
+*   Stations = Ef
+*   Modes = sess323.X256R
+  format = VDIF : : 256;
+  thread = 0 : 1 : 1 : 256 : 4 : 2 : : : 8000;
+  channel = &CH01 : 0 : 0;
+  channel = &CH02 : 0 : 1;
+  channel = &CH03 : 0 : 2;
+  channel = &CH04 : 0 : 3;
+enddef;
+*
+def McThreads;
+*   Stations = Mc
+*   Modes = sess323.X256R
+  format = VDIF : : 256;
+  thread = 0 : 1 : 1 : 256 : 4 : 2 : : : 8000;
+  channel = &CH01 : 0 : 0;
+  channel = &CH02 : 0 : 1;
+  channel = &CH03 : 0 : 2;
+  channel = &CH04 : 0 : 3;
+enddef;
+*------------------------------------------------------------------------------
+$HEAD_POS;
+def DiskVoid;
+* mode =  1    stations =Wb:Ef:Mc:O6:Tr:Hh:Wz
+*     Head positions irrelevant for Disk: empty def
+enddef;
+*------------------------------------------------------------------------------
+$PASS_ORDER;
+*
+def DiskVoid;
+* mode =  1    stations =Wb:Ef:Mc:O6:Tr:Hh:Wz
+*     Pass orders irrelevant for Disk: empty def
+enddef;
+*------------------------------------------------------------------------------
+$ROLL;
+*
+def NoRoll;
+* mode =  1    stations =Wb:Ef:Mc:O6:Tr:Hh:Wz
+*    barrel-roll set to 'roll_off', so reverse-roll by  0 (1 head)
+     roll = off;
+enddef;
+*------------------------------------------------------------------------------
+$SCHED;
+* schedule section for experiment ec094a
+* JUICE tracking
+scan No0001;
+     start=2023y292d14h00m00s; mode=sess323.X256R; source=J1800+3848;
+*              :data_good:data_stop:goto_foot: pass:  wrap :driv:tape at
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &ccw  : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0002;
+     start=2023y292d14h05m00s; mode=sess323.X256R; source=J1726-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0003;
+     start=2023y292d14h09m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0004;
+     start=2023y292d14h13m00s; mode=sess323.X256R; source=141300;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0005;
+     start=2023y292d14h16m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0006;
+     start=2023y292d14h20m00s; mode=sess323.X256R; source=141900;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0007;
+     start=2023y292d14h23m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0008;
+     start=2023y292d14h27m00s; mode=sess323.X256R; source=142700;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0009;
+     start=2023y292d14h30m00s; mode=sess323.X256R; source=J1720-2258;
+*              :data_good:data_stop:goto_foot: pass:  wrap :driv:tape at
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0010;
+     start=2023y292d14h34m00s; mode=sess323.X256R; source=143300;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0011;
+     start=2023y292d14h37m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0012;
+     start=2023y292d14h41m00s; mode=sess323.X256R; source=144100;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0013;
+     start=2023y292d14h44m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0014;
+     start=2023y292d14h48m00s; mode=sess323.X256R; source=144700;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0015;
+     start=2023y292d14h51m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0016;
+     start=2023y292d14h55m00s; mode=sess323.X256R; source=145500;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0017;
+     start=2023y292d14h58m00s; mode=sess323.X256R; source=J1720-2258;
+*              :data_good:data_stop:goto_foot: pass:  wrap :driv:tape at
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0018;
+     start=2023y292d15h02m00s; mode=sess323.X256R; source=150100;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0019;
+     start=2023y292d15h05m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0020;
+     start=2023y292d15h09m00s; mode=sess323.X256R; source=150900;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0021;
+     start=2023y292d15h12m00s; mode=sess323.X256R; source=J1726-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0022;
+     start=2023y292d15h15m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    2 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0023;
+     start=2023y292d15h18m00s; mode=sess323.X256R; source=151900;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0024;
+     start=2023y292d15h21m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0025;
+     start=2023y292d15h25m00s; mode=sess323.X256R; source=152500;
+*              :data_good:data_stop:goto_foot: pass:  wrap :driv:tape at
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0026;
+     start=2023y292d15h28m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0027;
+     start=2023y292d15h32m00s; mode=sess323.X256R; source=153300;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0028;
+     start=2023y292d15h35m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0029;
+     start=2023y292d15h39m00s; mode=sess323.X256R; source=153900;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0030;
+     start=2023y292d15h42m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0031;
+     start=2023y292d15h46m00s; mode=sess323.X256R; source=154700;
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0032;
+     start=2023y292d15h49m00s; mode=sess323.X256R; source=J1720-2258;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0033;
+     start=2023y292d15h53m00s; mode=sess323.X256R; source=J1726-2258;
+*              :data_good:data_stop:goto_foot: pass:  wrap :driv:tape at
+     station=Wb:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  120 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  120 sec:      0.000000000 GB:   : &n    : 1;
+endscan;
+scan No0034;
+     start=2023y292d15h58m00s; mode=sess323.X256R; source=J1642+3948;
+     station=Wb:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Ef:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Mc:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=O6:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Tr:    0 sec:  180 sec:      0.000000000 GB:   : &n    : 1;
+     station=Hh:    0 sec:  180 sec:      0.000000000 GB:   :       : 1;
+     station=Wz:    1 sec:  180 sec:      0.000000000 GB:   : &cw   : 1;
+endscan;
+*-------------------------------------------------------------------------------
+$TAPELOG_OBS;       * Experiment: EC094A
+*-------------------------------------------------------------------------------
+*
+*       drive#    VSN             start time          end time
+  def EF;
+    VSN = 1     : FLXBFFEf : 2023y292d14h00m00s : 2023y292d16h01m00s;
+  enddef;
+*
+  def HH;
+    VSN = 1     : FLXBFFHh : 2023y292d14h00m00s : 2023y292d16h01m00s;
+  enddef;
+*
+  def MC;
+    VSN = 1     : FLXBFFMc : 2023y292d14h00m00s : 2023y292d16h01m00s;
+  enddef;
+*
+  def O6;
+    VSN = 1     : FLXBFFO6 : 2023y292d14h00m00s : 2023y292d16h01m00s;
+  enddef;
+*
+  def TR;
+    VSN = 1     : FLXBFFTr : 2023y292d14h00m00s : 2023y292d16h01m00s;
+  enddef;
+*
+  def WB;
+    VSN = 1     : FLXBFFWb : 2023y292d14h00m00s : 2023y292d16h01m00s;
+  enddef;
+*
+  def WZ;
+    VSN = 1     : FLXBFFWz : 2023y292d14h00m00s : 2023y292d16h01m00s;
+  enddef;
+*-------------------------------------------------------------------------------
+$CLOCK;             * Experiment: EC094A
+*-------------------------------------------------------------------------------
+*
+*                  valid from           clock_early    clock_early_epoch        rate
+def EF;
+   clock_early = 2023y292d14h00m00s : 31.8560 usec : 2023y292d15h00m30s : 1.3200000e-7;
+enddef;
+def HH;
+   clock_early = 2023y292d14h00m00s : 10.0404 usec : 2023y292d15h00m30s : -1.1900000e-8;
+enddef;
+def MC;
+   clock_early = 2023y292d14h00m00s : -8.4210 usec : 2023y292d15h00m30s : 5.3400000e-8;
+enddef;
+def O6;
+   clock_early = 2023y292d14h00m00s : -102.4027 usec : 2023y292d15h00m30s : -6.3500000e-7;
+enddef;
+def TR;
+   clock_early = 2023y292d14h00m00s : 31.6670 usec : 2023y292d15h00m30s : 2.1000000e-6;
+enddef;
+def WB;
+   clock_early = 2023y292d14h00m00s : -8.6530 usec : 2023y292d15h00m30s : 1.1300000e-7;
+enddef;
+def WZ;
+   clock_early = 2023y292d14h00m00s : -2.4712 usec : 2023y292d15h00m30s : 0.0000000e+0;
+enddef;
+*-------------------------------------------------------------------------------
+$EOP; *  Experiment: EC094A
+*-------------------------------------------------------------------------------
+*
+ def EOP289;
+   TAI-UTC = 37 sec;
+   eop_ref_epoch = 2023y289d00h00m00s;
+   num_eop_points= 5;
+   eop_interval  = 24 hr;
+   ut1-utc   =  0.0134015 sec: 0.0132931 sec: 0.0133572 sec: 0.0136094 sec: 0.0139203 sec;
+   x_wobble  =  0.289564 asec: 0.288895 asec: 0.288102 asec: 0.286777 asec: 0.285233 asec;
+   y_wobble  =  0.298932 asec: 0.296732 asec: 0.294650 asec: 0.292859 asec: 0.291184 asec;
+   num_nut_points= 5;
+   delta_psi = -0.117349 asec:-0.117366 asec:-0.117263 asec:-0.117108 asec:-0.117030 asec;
+   delta_eps = -0.007985 asec:-0.008156 asec:-0.008206 asec:-0.008190 asec:-0.008178 asec;
+ enddef;
+*
+*-------------------------------------------------------------------------------

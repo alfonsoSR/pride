@@ -3,14 +3,23 @@ from pathlib import Path
 import os
 import pytest
 from astropy import time, coordinates
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 from pride.io.vex.interface import ScanData, SourceData
+from pride.io.vex.sanity import (
+    get_zero_gaps_and_overlaps_between_scans,
+    get_list_of_zero_gap_scans,
+    __get_list_of_zero_gap_scans_from_dictionary as _get_list_of_zero_gap_scans_from_dictionary,
+)
+
+VEX_FILE = Path(__file__).parent.parent / "data/GR035.vix"
+MOCK_VEX_METADATA = Path(__file__).parent.parent / "data/mock.vix"
+MOCK_VEX_SCANS = Path(__file__).parent.parent / "data/mock_scans.vix"
 
 
 class TestVexInterface:
 
-    vex_file = Path(__file__).parent.parent / "data/GR035.vix"
+    vex_file = VEX_FILE
 
     def test_metadata(self) -> None:
         """Test Vex constructor"""
@@ -257,5 +266,80 @@ class TestVexInterface:
                 obstime="J2000",
             )
             assert coords.to_string("hmsdms") == expected_ra_dec
+
+        return None
+
+
+class TestVexSanityChecks:
+
+    def test_identify_zero_gaps_and_overlaps(self) -> None:
+
+        # Create synthetic data
+        previous_scan_id = "Previous"
+        previous_scan_data = ScanData(
+            "calibrator",
+            "Source1",
+            "observation_mode",
+            datetime(2000, 6, 28, 13, 12, 0),
+            {
+                "Cd": (0, 120),
+                "Hb": (0, 120),
+                "Yg": (0, 120),
+                "Ke": (0, 120),
+                "Kr": (0, 119),
+                "Kx": (0, 119),
+            },
+        )
+        next_scan_id = "Next"
+        next_scan_data = ScanData(
+            "calibrator",
+            "Source2",
+            "observation_mode",
+            datetime(2000, 6, 28, 13, 13, 59),
+            {
+                "Cd": (0, 120),  # Overlap
+                "Hb": (1, 120),  # Zero gap exact
+                "Yg": (2, 120),  # Zero gap limit
+                "Ke": (3, 120),  # Good
+                "Kr": (2, 120),  # Good
+                "Kx": (1, 120),  # Zero gap
+            },
+        )
+
+        # Get lists of zero gaps and overlaps
+        zero_gaps, overlaps = get_zero_gaps_and_overlaps_between_scans(
+            previous_scan_data, next_scan_data
+        )
+        assert zero_gaps == ["Hb", "Yg", "Kx"]
+        assert overlaps == ["Cd"]
+
+        return None
+
+    def test_get_zero_gaps_from_vex(self) -> None:
+
+        vex = io.Vex(MOCK_VEX_SCANS)
+        zero_gap = get_list_of_zero_gap_scans(vex, "juice")
+        assert zero_gap == [
+            ("No0022", "Wb"),
+            ("No0022", "Ef"),
+            ("No0022", "Mc"),
+            ("No0022", "O6"),
+            ("No0022", "Tr"),
+            ("No0022", "Hh"),
+        ]
+
+        # Add artificial overlap and check that function fails
+        last_scan_id = vex.experiment_scans_ids[-1]
+        last_scan_data = vex.load_single_scan_data(last_scan_id, "juice")
+        overlap_scan = ScanData(
+            last_scan_data.source_type,
+            "foo",
+            last_scan_data.observation_mode,
+            last_scan_data.initial_epoch + timedelta(seconds=10),
+            last_scan_data.offsets_per_station,
+        )
+        scan_dictionary = {"previous": last_scan_data, "next": overlap_scan}
+        with pytest.raises(SystemExit):
+            _ = _get_list_of_zero_gap_scans_from_dictionary(scan_dictionary)
 
         return None

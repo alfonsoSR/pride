@@ -222,6 +222,11 @@ class Experiment:
         observation_bands: dict[str, dict[str, "Band"]] = {}
         observation_tstamps: dict[str, dict[str, list[datetime.datetime]]] = {}
 
+        # Parse VEX to identify cases of zero-gap scans
+        zero_gap_scans = io.vex.get_list_of_zero_gap_scans(
+            vex, self.target["short_name"]
+        )
+
         # Loop over all scans in the VEX file
         for scan_id in vex.experiment_scans_ids:
 
@@ -235,6 +240,14 @@ class Experiment:
                 initial_offset,
                 final_offset,
             ) in scan_data.offsets_per_station.items():
+
+                # If scan is zero-gap for this station, add 1 second offset
+                if (scan_id, station_id) in zero_gap_scans:
+                    log.warning(
+                        f"Detected zero-gap for station {station_id} in scan "
+                        f"{scan_id}: Applying additional offset of one second"
+                    )
+                    initial_offset += 1
 
                 # Calculate timestamps for this scan
                 scan_timestamps = utils.discretize_scan(
