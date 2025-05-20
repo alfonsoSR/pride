@@ -3,6 +3,7 @@ import shutil
 from importlib import metadata
 from pride import __version__
 
+# __version__ = "1.2.4"
 
 BASE_DIR: Path = Path(__file__).parent.parent.parent
 SOURCE_DIR: Path = BASE_DIR / "src"
@@ -52,6 +53,10 @@ exclude_patterns = []
 autoapi_keep_files = False
 autoapi_root = "api"
 autoapi_add_toctree_entry = False
+
+rst_epilog = f"""
+.. |__version__| replace:: {__version__}
+"""
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
