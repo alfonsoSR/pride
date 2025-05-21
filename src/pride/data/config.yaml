@@ -15,11 +15,11 @@ Configuration:
   # Celestial bodies to consider for relativistic LT corrections
   lt_correction_bodies: [
     sun,
-    mercury,
-    venus,
+    mercury_barycenter,
+    venus_barycenter,
     earth,
     moon,
-    mars,
+    mars_barycenter,
     jupiter_barycenter,
     saturn_barycenter,
     uranus_barycenter,
