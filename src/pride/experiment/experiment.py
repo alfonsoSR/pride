@@ -366,19 +366,23 @@ class Experiment:
 
         # Output files and observations
         observations: dict[tuple[str, str], "Observation"] = {}
-        output_files: dict[str, "io.DelFile"] = {}
+        output_files: dict[str, "io.DelFileGenerator"] = {}
         for baseline in self.baselines:
 
             # Station code
-            code = baseline.station.id.title()
+            station_id = baseline.station.id.title()
 
             # Initialize output file for observation
-            output_files[code] = io.DelFile(outdir / f"{self.name}_{code}.del")
-            output_files[code].create_file(code)
+            output_files[station_id] = io.DelFileGenerator(
+                outdir / f"{self.name}_{station_id}.del"
+            )
+            output_files[station_id].add_header(station_id)
 
             # Add observations to dictionary
             for observation in baseline.observations:
-                observations[(code, observation.source.name)] = observation
+                observations[(station_id, observation.source.name)] = (
+                    observation
+                )
 
         # Main loop
         sorted_scans = sorted([s for s in self.__vex.experiment_scans_ids])
@@ -455,6 +459,8 @@ class Experiment:
                 data = np.array(
                     [mjd2, zero, zero, zero, scan_delays, zero, zero + 1.0]
                 ).T
-                output_files[station_id].add_scan(scan_source_id, mjd1, data)
+                output_files[station_id].add_scan(
+                    scan_id, scan_source_id, mjd1, data
+                )
 
         return None
