@@ -3,13 +3,13 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Scan:
+class ScanData:
     """Data structure for scan information
 
     :param scan_id: Scan ID (e.g. No0001)
     :param source: Source name
     :param mjd_ref: Integer component of the MJDs in the scan
-    :param mjd2: Array of fractional components of the MJDs in the scan
+    :param mjd2: Array with fractional part of MJDs in seconds
     :u, v, w: Arrays of u, v, w projections [UNITS?]
     :param delays: Array of delays [s]
     :param doppler_phase: Array of Doppler phase values [UNITS?]
@@ -37,4 +37,4 @@ class DelContents:
     """
 
     station_id: str
-    scans: list[Scan]
+    scans: list[ScanData]

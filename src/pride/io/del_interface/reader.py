@@ -4,7 +4,7 @@ import numpy as np
 from ...logger import log
 import sys
 from dataclasses import dataclass
-from .data_structures import DelContents, Scan
+from .data_structures import DelContents, ScanData
 from typing import Any
 from ... import utils
 
@@ -60,24 +60,6 @@ class DelFileInterface:
 
         return None
 
-    def get_header_size(self, buffer: bytes) -> tuple[int, int]:
-        """Get size of the header
-
-        Reads the first 4 bytes of the DEL file to get the size of the header.
-
-        :param buffer: Contents of the DEL file as a buffer of bytes
-        :return header_size: Size of the header in bytes
-        :return current_byte: Position from which to start reading the buffer
-        """
-
-        # Get size of header
-        header_size = int.from_bytes(buffer[0:4], "little")
-
-        # Set starting position in buffer to the size of the integer
-        current_byte: int = 4
-
-        return header_size, current_byte
-
     def read_contents(self) -> "DelContents":
         """Load contents of DEL file into a data structure
 
@@ -90,13 +72,13 @@ class DelFileInterface:
 
         # Read station ID
         (station_id,), current_byte = utils.peek_buffer(
-            self.buffer, f"<{header_size}s", current_byte
+            self.buffer, f"<{header_size-3}x2sx", current_byte
         )
         assert isinstance(station_id, str)
 
         # Loop over scan section and read data
-        scans_list: list[Scan] = []
-        while current_byte <= self.buffer_size:
+        scans_list: list[ScanData] = []
+        while current_byte < self.buffer_size:
 
             # Read scan ID
             (scan_id,), current_byte = utils.peek_buffer(
@@ -126,7 +108,7 @@ class DelFileInterface:
                 )
 
                 # Check if end of scan section
-                if len(values) == 0:
+                if sum(values) == 0:
                     break
 
                 # Append values to scan data
@@ -134,7 +116,8 @@ class DelFileInterface:
 
             # Pack in data structure and append to list
             scans_list.append(
-                Scan(scan_id, source_name, mjd_date, *np.array(scan_data).T)
+                ScanData(scan_id, source_name, mjd_date, *np.array(scan_data).T)
             )
 
-        return None
+        # Pack output in data structure
+        return DelContents(station_id, scans_list)

@@ -1,16 +1,20 @@
 from pride.io.del_interface.generator import DelFileGenerator
 from pride.io.del_interface.reader import DelFileInterface
+from pride.io.del_interface.data_structures import DelContents, ScanData
 from pathlib import Path
 import pytest
-import os
 import numpy as np
 import struct
+from astropy import time
+from pride import utils
+
+TOL: float = 1e-15
 
 
 class TestDelFileInterface:
     """Tests for functionality to read data from DEL files."""
 
-    del_file: Path = Path(__file__).parent.parent / "data/del_from_sfxc.del"
+    del_file: Path = Path(__file__).parent.parent / "data/EC094A_Ef.del"
 
     def test_initialize_del_object(self) -> None:
 
@@ -27,7 +31,32 @@ class TestDelFileInterface:
 
         return None
 
-    def test_peek(self) -> None:
+    def test_read_contents(self) -> None:
+
+        # Read contents of DEL file
+        contents = DelFileInterface(self.del_file).read_contents()
+
+        # Basic checks
+        assert isinstance(contents, DelContents)
+        assert contents.station_id == "Ef"
+        assert len(contents.scans) == 34
+        assert all(isinstance(scan, ScanData) for scan in contents.scans)
+
+        # Check contents of some scan in the middle [Scan 22]
+        test_scan = contents.scans[22]
+        assert test_scan.id == "No0023"
+        assert test_scan.source == "151900"
+        assert test_scan.mjd_ref == int(time.Time("2023-10-19T00:00:00").mjd)  # type: ignore
+        assert len(test_scan.mjd2) == 13
+        assert np.isclose(test_scan.mjd2[0], 15 * 3600.0 + 18.0 * 60, atol=TOL)
+        assert np.isclose(
+            (test_scan.mjd2[-1] - test_scan.mjd2[0]), 120.0, atol=TOL
+        )
+        assert np.all(test_scan.u == 0)
+        assert np.all(test_scan.v == 0)
+        assert np.all(test_scan.w == 0)
+        assert np.all(test_scan.doppler_phase == 0)
+        assert np.all(test_scan.doppler_amp == 1)
 
         return None
 
