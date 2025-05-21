@@ -455,6 +455,8 @@ class Experiment:
                 data = np.array(
                     [mjd2, zero, zero, zero, scan_delays, zero, zero + 1.0]
                 ).T
-                output_files[station_id].add_scan(scan_source_id, mjd1, data)
+                output_files[station_id].add_scan(
+                    scan_id, scan_source_id, mjd1, data
+                )
 
         return None

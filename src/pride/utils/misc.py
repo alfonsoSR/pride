@@ -9,6 +9,7 @@ from scipy import interpolate
 from importlib import resources
 import yaml
 from pathlib import Path
+import struct
 
 # Load internal configuration
 with resources.path("pride.data", "config.yaml") as config_path:
@@ -133,3 +134,58 @@ def is_station_in_line(station_name: str, line: str) -> bool:
 
     # Check if any of the alternative names is present in the line
     return any([name in line.split() for name in alternative_names])
+
+
+def peek_buffer(
+    buffer: bytes, contents_format: str, start: int
+) -> tuple[list[Any], int]:
+    """Read and decode a sequence of bytes from a buffer
+
+    Starting from the `start` position, reads a portion of the buffer, and decodes it according to the format string. The amount of bytes to read is calculated automatically from the format string. The function returns the decoded contents, and the updated position from which to keep reading the buffer.
+
+    :param buffer: Buffer of bytes to read from
+    :param contents_format: Format string to decode the bytes
+    :param start: Position from which to start reading the buffer
+    :return contents: Decoded contents
+    :return current_byte: Updated position from which to keep reading the buffer
+    :raises BufferError: If it is not possible to calculate the number of bytes to read from the format string
+    :raises BufferError: If the sum of the start position, and the calculated number of bytes to read is greater than the size of the buffer
+    """
+
+    # Get number of bytes to read from requested format
+    try:
+        bytes_to_read: int = struct.calcsize(contents_format)
+    except:
+        raise BufferError(
+            f"Failed to calculate size of format string: {contents_format}"
+        )
+
+    # Avoid trying to read beyond the end of the buffer
+    if start + bytes_to_read > len(buffer):
+        raise BufferError("Requested to read past the end of the buffer")
+
+    # Unpack contents of buffer
+    contents = struct.unpack(
+        contents_format, buffer[start : start + bytes_to_read]
+    )
+
+    # Post-process output to turn bytes into strings
+    postprocessed_contents: list[str | float | int] = []
+    for item in contents:
+
+        # If integer or float, append it to the list
+        if not isinstance(item, bytes):
+            postprocessed_contents.append(item)
+            continue
+
+        # Decode bytes to string
+        decoded_item: str = item.decode("utf-8")
+
+        # Remove padding and white-space
+        decoded_item = decoded_item.replace("\x00", "").replace(" ", "")
+
+        # Append decoded item to list
+        postprocessed_contents.append(decoded_item)
+
+    # Return contents and updated position
+    return postprocessed_contents, start + bytes_to_read

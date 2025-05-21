@@ -4,6 +4,7 @@ import datetime
 import pytest
 import numpy as np
 from astropy import time
+import struct
 
 TOL = 1e-15
 
@@ -259,5 +260,48 @@ def test_is_station_in_line(station: str, line: str, found: bool) -> None:
 def test_epoch_is_date(epoch: "time.Time", is_date: bool) -> None:
 
     assert utils.epoch_is_date(epoch) == is_date
+
+    return None
+
+
+@pytest.mark.parametrize(
+    ["contents_format", "start", "expected", "expected_index", "fails"],
+    [
+        ("<ix", 0, [4], 5, False),  # Read integer
+        ("<3sx", 5, ["AsR"], 9, False),  # Read strings
+        ("<3d2x", 9, [1.0, 2.0, 3.0], 35, False),  # Read doubles (with padding)
+        (
+            "<3d",
+            9,
+            [1.0, 2.0, 3.0],
+            33,
+            False,
+        ),  # Read doubles (without padding)
+        ("<o", 0, [], 0, True),  # Fail on incorrect format
+        ("<10x", 30, [], 0, True),  # Fail on buffer overflow
+    ],
+)
+def test_peek_buffer(
+    contents_format: str,
+    start: int,
+    expected: list,
+    expected_index: int,
+    fails: bool,
+) -> None:
+
+    common_buffer = struct.pack(
+        "<ix3sx3d2x", 4, "AsR".encode("utf-8"), 1.0, 2.0, 3.0
+    )
+
+    # For tests of expected failures: should always raise BufferError
+    if fails:
+        with pytest.raises(BufferError):
+            _ = utils.peek_buffer(common_buffer, contents_format, start)
+        return None
+
+    output, index = utils.peek_buffer(common_buffer, contents_format, start)
+
+    assert output == expected
+    assert index == expected_index
 
     return None
