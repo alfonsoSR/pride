@@ -30,16 +30,12 @@ class Baseline:
         "observations",
         "tstamps",
         "a_tstamps",
-        "eops",
         "a_eops",
         "icrf2itrf",
         "a_icrf2itrf",
         "dot_icrf2itrf",
-        "seu2itrf",
         "a_seu2itrf",
-        "lat",
         "a_lat",
-        "lon",
         "a_lon",
     )
 
@@ -52,21 +48,22 @@ class Baseline:
         # Optional attributes
         self.tstamps: time.Time = NotImplemented
         self.a_tstamps: time.Time = NotImplemented
-        self.eops: np.ndarray = NotImplemented
         self.a_eops: np.ndarray = NotImplemented
         self.icrf2itrf: np.ndarray = NotImplemented
         self.a_icrf2itrf: np.ndarray = NotImplemented
         self.dot_icrf2itrf: np.ndarray = NotImplemented
-        self.seu2itrf: np.ndarray = NotImplemented
         self.a_seu2itrf: np.ndarray = NotImplemented
-        self.lat: np.ndarray = NotImplemented
         self.a_lat: np.ndarray = NotImplemented
-        self.lon: np.ndarray = NotImplemented
         self.a_lon: np.ndarray = NotImplemented
 
         return None
 
     def __getattribute__(self, name: str) -> Any:
+
+        value = "icrf2itrf"
+
+        if name == value:
+            log.fatal(f"Accessing {value} from baseline")
 
         val = super().__getattribute__(name)
         if val is NotImplemented:
@@ -113,42 +110,38 @@ class Baseline:
             __tstamps[:, None]
             + time.TimeDelta([-1, 0, 1], format="sec")[None, :]
         ).ravel()  # type: ignore
-        self.a_tstamps = time.Time(
+        a_tstamps = time.Time(
             __augmented_tstamps,
             scale="utc",
             location=self.station.tectonic_corrected_location(
                 __augmented_tstamps
             ),
         )
-        assert self.a_tstamps.location is not None
+        assert a_tstamps.location is not None
 
         # Calculate geodetic coordinates of station
-        a_geodetic = self.a_tstamps.location.to_geodetic("GRS80")
-        self.a_lat = np.array(a_geodetic.lat.rad, dtype=float)
-        self.a_lon = np.array(a_geodetic.lon.rad, dtype=float)
+        a_geodetic = a_tstamps.location.to_geodetic("GRS80")
+        a_lat = np.array(a_geodetic.lat.rad, dtype=float)
+        a_lon = np.array(a_geodetic.lon.rad, dtype=float)
 
         # Calculate rotation matrices
-        augmented_eops = eops.at_epoch(self.a_tstamps, unit="arcsec")
-        self.a_eops = augmented_eops
+        augmented_eops = eops.at_epoch(a_tstamps, unit="arcsec")
         # self.a_eops = eops.at_epoch(self.a_tstamps, unit="arcsec")
-        self.a_icrf2itrf = coord.icrf2itrf(augmented_eops, self.a_tstamps)
-        self.a_seu2itrf = coord.seu2itrf(self.a_lat, self.a_lon)
+        a_icrf2itrf = coord.icrf2itrf(augmented_eops, a_tstamps)
+        a_seu2itrf = coord.seu2itrf(a_lat, a_lon)
 
         # Calculate derivative of ICRF to ITRF rotation matrix
         dt_tdb: np.ndarray = (
-            (self.a_tstamps.tdb[2::3] - self.a_tstamps.tdb[0::3])
+            (a_tstamps.tdb[2::3] - a_tstamps.tdb[0::3])
             .to("s")  # type: ignore
             .value
         )
-        diff_icrf2itrf = self.a_icrf2itrf[2::3] - self.a_icrf2itrf[0::3]
-        self.dot_icrf2itrf = diff_icrf2itrf / dt_tdb[:, None, None]
+        diff_icrf2itrf = a_icrf2itrf[2::3] - a_icrf2itrf[0::3]
+        dot_icrf2itrf = diff_icrf2itrf / dt_tdb[:, None, None]
 
         # Get attributes at observation epochs
-        self.eops = augmented_eops[1::3]
-        self.icrf2itrf = self.a_icrf2itrf[1::3]
-        self.seu2itrf = self.a_seu2itrf[1::3]
-        self.lat = self.a_lat[1::3]
-        self.lon = self.a_lon[1::3]
+        icrf2itrf = a_icrf2itrf[1::3]
+        seu2itrf = a_seu2itrf[1::3]
 
         # Update observations with calculated data
         for observation in self.observations:
@@ -160,9 +153,19 @@ class Baseline:
                 dtype=bool,
             )
 
-            observation.icrf2itrf = self.icrf2itrf[flags]
-            observation.seu2itrf = self.seu2itrf[flags]
-            observation.dot_icrf2itrf = self.dot_icrf2itrf[flags]
+            observation.icrf2itrf = icrf2itrf[flags]
+            observation.seu2itrf = seu2itrf[flags]
+            observation.dot_icrf2itrf = dot_icrf2itrf[flags]
+
+        # Set augmented arrays as properties
+        self.a_eops = augmented_eops
+        self.a_lat = a_lat
+        self.a_lon = a_lon
+        self.a_tstamps = a_tstamps
+        self.a_icrf2itrf = a_icrf2itrf
+        self.a_seu2itrf = a_seu2itrf
+        self.icrf2itrf = icrf2itrf
+        self.dot_icrf2itrf = dot_icrf2itrf
 
         return None
 
@@ -185,6 +188,7 @@ class Baseline:
             "lon": self.a_lon,
             "xsta_itrf": self.station.location(self.a_tstamps),
         }
+        log.debug("Right after shared resources")
 
         # Station position at reference epochs [Tectonic corrected]
         xsta_itrf = shared_resources["xsta_itrf"][1::3]
