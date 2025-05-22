@@ -24,98 +24,50 @@ class Baseline:
     :param exp: Experiment object to which the baseline belongs
     """
 
-    __slots__ = (
-        "center",
-        "station",
-        "observations",
-        "tstamps",
-        "a_tstamps",
-        "a_eops",
-        "icrf2itrf",
-        "a_icrf2itrf",
-        "dot_icrf2itrf",
-        "a_seu2itrf",
-        "a_lat",
-        "a_lon",
-    )
+    # __slots__ = (
+    #     "center",
+    #     "station",
+    #     "observations",
+    #     "tstamps",
+    #     "a_tstamps",
+    #     "a_eops",
+    #     "icrf2itrf",
+    #     "a_icrf2itrf",
+    #     "dot_icrf2itrf",
+    #     "a_seu2itrf",
+    #     "a_lat",
+    #     "a_lon",
+    # )
 
-    def __init__(self, center: "Station", station: "Station") -> None:
+    def __init__(
+        self,
+        center: "Station",
+        station: "Station",
+        observations: list["Observation"],
+        eops: "coord.EOP",
+    ) -> None:
 
-        self.center = center
-        self.station = station
-        self.observations: list["Observation"] = []
-
-        # Optional attributes
-        self.tstamps: time.Time = NotImplemented
-        self.a_tstamps: time.Time = NotImplemented
-        self.a_eops: np.ndarray = NotImplemented
-        self.icrf2itrf: np.ndarray = NotImplemented
-        self.a_icrf2itrf: np.ndarray = NotImplemented
-        self.dot_icrf2itrf: np.ndarray = NotImplemented
-        self.a_seu2itrf: np.ndarray = NotImplemented
-        self.a_lat: np.ndarray = NotImplemented
-        self.a_lon: np.ndarray = NotImplemented
-
-        return None
-
-    def __getattribute__(self, name: str) -> Any:
-
-        value = "icrf2itrf"
-
-        if name == value:
-            log.fatal(f"Accessing {value} from baseline")
-
-        val = super().__getattribute__(name)
-        if val is NotImplemented:
-            raise AttributeError(f"Attribute {name} not set for {self.id}")
-        return val
-
-    @property
-    def id(self) -> str:
-        return f"{self.center.name}-{self.station.name}"
-
-    @property
-    def nobs(self) -> int:
-        return len(self.observations)
-
-    def __str__(self) -> str:
-        return self.id
-
-    def add_observation(self, observation: "Observation") -> None:
-        """Add observation to baseline"""
-
-        self.observations.append(observation)
-        return None
-
-    def update_with_observations(self, eops: "coord.EOP") -> None:
-        """Update baseline object with data derived from observations
-
-        :param eops: Interface from which to obtain Earth Orientation Parameters during the time span of the experiment
-        """
-
-        log.debug(f"Updating {self.id} baseline with observations")
-
-        # Merge time stamps of all the observations
-        __tstamps: time.Time = time.Time(
-            [observation.tstamps for observation in self.observations],
+        # Merge timestamps of all the observations
+        tstamps_no_location = time.Time(
+            [observation.tstamps for observation in observations],
             scale="utc",
-        ).sort()  # type: ignore
-        self.tstamps = time.Time(
-            __tstamps,
-            location=self.station.tectonic_corrected_location(__tstamps),
+            location=None,
+        ).sort()
+        assert isinstance(tstamps_no_location, time.Time)
+        tstamps = time.Time(
+            tstamps_no_location,
+            location=station.tectonic_corrected_location(tstamps_no_location),
         )
 
         # Augment time stamps with +/- 1 second around each epoch
         __augmented_tstamps: time.Time = (
-            __tstamps[:, None]
+            tstamps_no_location[:, None]
             + time.TimeDelta([-1, 0, 1], format="sec")[None, :]
         ).ravel()  # type: ignore
         a_tstamps = time.Time(
             __augmented_tstamps,
             scale="utc",
-            location=self.station.tectonic_corrected_location(
-                __augmented_tstamps
-            ),
+            location=station.tectonic_corrected_location(__augmented_tstamps),
         )
         assert a_tstamps.location is not None
 
@@ -144,11 +96,11 @@ class Baseline:
         seu2itrf = a_seu2itrf[1::3]
 
         # Update observations with calculated data
-        for observation in self.observations:
+        for observation in observations:
 
             # Get the index of the time stamps associated with the observation
             flags = np.sum(
-                observation.tstamps[:, None] == self.tstamps[None, :],
+                observation.tstamps[:, None] == tstamps[None, :],
                 axis=0,
                 dtype=bool,
             )
@@ -157,17 +109,32 @@ class Baseline:
             observation.seu2itrf = seu2itrf[flags]
             observation.dot_icrf2itrf = dot_icrf2itrf[flags]
 
-        # Set augmented arrays as properties
+        # Attributes
+        self.center = center
+        self.station = station
+        self.observations = observations
+        self.tstamps = tstamps
+        self.a_tstamps = a_tstamps
         self.a_eops = augmented_eops
+        self.icrf2itrf = icrf2itrf
+        self.a_icrf2itrf = a_icrf2itrf
+        self.dot_icrf2itrf = dot_icrf2itrf
+        self.a_seu2itrf = a_seu2itrf
         self.a_lat = a_lat
         self.a_lon = a_lon
-        self.a_tstamps = a_tstamps
-        self.a_icrf2itrf = a_icrf2itrf
-        self.a_seu2itrf = a_seu2itrf
-        self.icrf2itrf = icrf2itrf
-        self.dot_icrf2itrf = dot_icrf2itrf
 
         return None
+
+    @property
+    def id(self) -> str:
+        return f"{self.center.name}-{self.station.name}"
+
+    @property
+    def nobs(self) -> int:
+        return len(self.observations)
+
+    def __str__(self) -> str:
+        return self.id
 
     def update_station_with_geophysical_displacements(
         self, displacement_models: list["Displacement"]
