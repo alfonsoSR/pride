@@ -56,7 +56,8 @@ class Experiment:
         self.clock_offsets = self.clock_parameters  # Backwards compatibility
 
         # EOPs: For transformations between ITRF and ICRF
-        self.experiment_eops = EOP(
+        # Only used in  Baseline.update_with_observations
+        self.eops = EOP(
             bulletin=self.setup.internal["eop_bulletin"],
             initial_epoch=self.initial_epoch,
             final_epoch=self.final_epoch,
@@ -93,13 +94,6 @@ class Experiment:
         self.delay_models = self.initialize_delay_models()
 
         return None
-
-    @property
-    def eops(self) -> EOP:
-
-        log.fatal("Calling eops from experiment")
-
-        return self.experiment_eops
 
     def __ensure_spice_kernels(self, target: str) -> Path:
         """Ensure SPICE kernels are available for the target

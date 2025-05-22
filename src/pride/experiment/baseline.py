@@ -8,6 +8,7 @@ from scipy import interpolate
 if TYPE_CHECKING:
     from .station import Station
     from .observation import Observation
+    from ..displacements import Displacement
 
 
 class Baseline:
@@ -27,7 +28,6 @@ class Baseline:
         "center",
         "station",
         "observations",
-        "exp",
         "tstamps",
         "a_tstamps",
         "eops",
@@ -48,7 +48,6 @@ class Baseline:
         self.center = center
         self.station = station
         self.observations: list["Observation"] = []
-        self.exp = self.station.exp
 
         # Optional attributes
         self.tstamps: time.Time = NotImplemented
@@ -91,8 +90,11 @@ class Baseline:
         self.observations.append(observation)
         return None
 
-    def update_with_observations(self) -> None:
-        """Update baseline object with data derived from observations"""
+    def update_with_observations(self, eops: "coord.EOP") -> None:
+        """Update baseline object with data derived from observations
+
+        :param eops: Interface from which to obtain Earth Orientation Parameters during the time span of the experiment
+        """
 
         log.debug(f"Updating {self.id} baseline with observations")
 
@@ -126,8 +128,10 @@ class Baseline:
         self.a_lon = np.array(a_geodetic.lon.rad, dtype=float)
 
         # Calculate rotation matrices
-        self.a_eops = self.exp.eops.at_epoch(self.a_tstamps, unit="arcsec")
-        self.a_icrf2itrf = coord.icrf2itrf(self.a_eops, self.a_tstamps)
+        augmented_eops = eops.at_epoch(self.a_tstamps, unit="arcsec")
+        self.a_eops = augmented_eops
+        # self.a_eops = eops.at_epoch(self.a_tstamps, unit="arcsec")
+        self.a_icrf2itrf = coord.icrf2itrf(augmented_eops, self.a_tstamps)
         self.a_seu2itrf = coord.seu2itrf(self.a_lat, self.a_lon)
 
         # Calculate derivative of ICRF to ITRF rotation matrix
@@ -140,7 +144,7 @@ class Baseline:
         self.dot_icrf2itrf = diff_icrf2itrf / dt_tdb[:, None, None]
 
         # Get attributes at observation epochs
-        self.eops = self.a_eops[1::3]
+        self.eops = augmented_eops[1::3]
         self.icrf2itrf = self.a_icrf2itrf[1::3]
         self.seu2itrf = self.a_seu2itrf[1::3]
         self.lat = self.a_lat[1::3]
@@ -162,7 +166,9 @@ class Baseline:
 
         return None
 
-    def update_station_with_geophysical_displacements(self) -> None:
+    def update_station_with_geophysical_displacements(
+        self, displacement_models: list["Displacement"]
+    ) -> None:
 
         log.debug(
             f"Updating {self.station.name} station with geophysical "
@@ -193,7 +199,7 @@ class Baseline:
         ).squeeze()
 
         # Update positions and velocities with displacements
-        for model in self.exp.displacement_models:
+        for model in displacement_models:
 
             # Calculate augmented displacement in ICRF and ITRF
             resources = model.load_resources(self.a_tstamps, shared_resources)

@@ -61,8 +61,7 @@ class EOP:
         assert isinstance(eop_table_mask, np.ndarray)
 
         # Get MJD for table entries in the time range
-        relevant_mjds: np.ndarray = eop_table["MJD"][eop_table_mask].data  # type: ignore
-        assert isinstance(relevant_mjds, np.ndarray)
+        relevant_mjds = eop_table["MJD"][eop_table_mask].data  # type: ignore
 
         # EOPs at integer epochs
         self.__eops_dict = {
@@ -89,29 +88,6 @@ class EOP:
         }
 
         return None
-
-    def __get_time_range_from_user_input(
-        self, initial_epoch: time.Time, final_epoch: time.Time, margin: int
-    ) -> tuple[float, float]:
-        """Calculate time range to load EOPs from user input
-
-        :param initial_epoch: Epoch from which to load EOPs
-        :param final_epoch: Epoch until which to load EOPs
-        :param margin: Number of days by which to augment the time range defined by the initial and final epochs.
-        :return: Tuple with augmented time range in MJD
-        """
-
-        # Augment initial epoch
-        initial_mjd: int = (
-            utils.get_date_from_epoch(initial_epoch).mjd - margin  # type: ignore
-        )
-
-        # Augment final epoch
-        final_mjd: int = (
-            utils.get_date_from_epoch(final_epoch).mjd + margin  # type: ignore
-        )
-
-        return NotImplemented
 
     def __eops(self, mjds) -> np.ndarray:
 
