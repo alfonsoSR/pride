@@ -49,3 +49,11 @@ class Delay(metaclass=ABCMeta):
 
     @abstractmethod
     def calculate(self, obs: "Observation") -> Any: ...
+
+    def calculate_with_logging(self, obs: "Observation") -> Any:
+
+        log.debug(
+            f"Calculating {self.name} delay of {obs.source.name} from "
+            f"{obs.station.name}"
+        )
+        return self.calculate(obs)

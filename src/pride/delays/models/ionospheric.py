@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from ...experiment.observation import Observation
 
 
+TURNAROUND_RATIO = io.load_catalog("config.yaml")["Configuration"]["tr_ratio"]
+
+
 class Ionospheric(Delay):
     """Ionospheric delay
 
@@ -185,7 +188,7 @@ class Ionospheric(Delay):
                 df0 = np.sum(np.where(mask_3way, three_way["df"], 0), axis=1)
                 t0 = np.sum(np.where(mask_3way, three_way["t0"].jd, 0), axis=1)
                 dt = time.TimeDelta(uplink_tx.jd - t0, format="jd").to("s").value  # type: ignore
-                freq += (f0 + df0 * dt) * obs.exp.setup.internal["tr_ratio"]
+                freq += (f0 + df0 * dt) * TURNAROUND_RATIO
 
                 # Check for lack of coverage
                 holes = np.sum(mask_3way, axis=1) == 0

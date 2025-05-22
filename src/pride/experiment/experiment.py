@@ -327,12 +327,11 @@ class Experiment:
             for source_id in observation_bands[baseline_id]:
 
                 # Create observation object
-                _observation = Observation.from_experiment(
+                _observation = Observation(
                     baselines_dictionary[baseline_id],
                     self.sources[source_id],
                     observation_bands[baseline_id][source_id],
                     observation_tstamps[baseline_id][source_id],
-                    self,
                 )
 
                 # Update baseline with observation

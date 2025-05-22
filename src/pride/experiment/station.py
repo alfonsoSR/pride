@@ -31,7 +31,6 @@ class Station:
         "clock_data",
         "has_tectonic_correction",
         "has_geophysical_corrections",
-        "exp",
         "_ref_epoch",
         "_ref_location",
         "_ref_velocity",
@@ -58,7 +57,6 @@ class Station:
         self.has_geophysical_corrections = False
 
         # Optional attributes
-        self.exp: "Experiment" = NotImplemented
         self.clock_data: tuple[datetime, float, float] = NotImplemented
         self._ref_epoch: time.Time = NotImplemented
         self._ref_location: np.ndarray = NotImplemented
@@ -71,6 +69,9 @@ class Station:
         return None
 
     def __getattribute__(self, name: str) -> Any:
+
+        if name == "exp":
+            log.fatal("Accessing experiment attribute of station")
 
         val = super().__getattribute__(name)
         if val is NotImplemented:
@@ -85,7 +86,6 @@ class Station:
 
         station = Station(name, id)
         setup = experiment.setup
-        station.exp = experiment
 
         # Check if station is the phase center
         if station.name == setup.general["phase_center"]:
@@ -145,6 +145,7 @@ class Station:
         """
 
         if not self.has_tectonic_correction:
+
             if not self.is_phase_center:
                 raise NotImplementedError("Not supposed to happen")
             if not self.name == "GEOCENTR":
@@ -157,10 +158,11 @@ class Station:
             out = np.array(self.tectonic_corrected_location(epoch).geocentric).T
             match frame:
                 case "icrf":
-                    eops = self.exp.eops.at_epoch(epoch, unit="arcsec")
-                    return (
-                        coord.itrf2icrf(eops, epoch) @ out[:, :, None]
-                    ).squeeze()
+                    log.error(
+                        "The option to calculate ICRF coordinates without "
+                        "geophysical displacements is not implemented"
+                    )
+                    exit(1)
                 case "itrf":
                     return out
                 case _:
