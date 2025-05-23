@@ -6,7 +6,7 @@ from .. import coordinates as coord
 from scipy import interpolate
 
 if TYPE_CHECKING:
-    from .station import Station
+    from ..station.core import Station
     from .observation import Observation
     from ..displacements import Displacement
 

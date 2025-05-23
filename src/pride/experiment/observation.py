@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ..types import Band
     from .baseline import Baseline
     from ..delays import Delay
-    from .station import Station
+    from ..station.core import Station
 
 
 class Observation:
