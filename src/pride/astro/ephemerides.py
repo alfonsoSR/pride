@@ -13,8 +13,6 @@ def get_icrf_state_vector(target: str, epochs: np.ndarray) -> np.ndarray:
     :return state_vector: Aberrated, cartesian state vector of the target with respect to SSB in J2000 (ICRF) frame.
     """
 
-    log.warning("Missing tests: get_icrf_state_vector")
-
     # Get state and LT from spice
     cstate_tuple, _ = spice.spkezr(target, epochs, "J2000", "NONE", "SSB")
 
@@ -31,8 +29,6 @@ def get_icrf_position_vector(target: str, epochs: np.ndarray) -> np.ndarray:
     :param epochs: Array of epochs in ET (TDB seconds past J2000)
     :return position_vector: Aberrated, cartesian position vector of the target with respect to SSB in J2000 (ICRF) frame.
     """
-
-    log.warning("Missing tests: get_icrf_position_vector")
 
     # Get position and LT from spice
     cpos_tuple, _ = spice.spkpos(target, epochs, "J2000", "NONE", "SSB")
@@ -51,8 +47,6 @@ def get_gcrf_position_vector(target: str, epochs: np.ndarray) -> np.ndarray:
     :return position_vector: Aberrated, cartesian position vector of the target with respect to EARTH in J2000 (GCRF) frame.
     """
 
-    log.warning("Missing tests: get_gcrf_position_vector")
-
     # Get position and LT from spice
     cpos_tuple, _ = spice.spkpos(target, epochs, "J2000", "NONE", "EARTH")
 
@@ -69,8 +63,6 @@ def get_gcrf_state_vector(target: str, epochs: np.ndarray) -> np.ndarray:
     :param epochs: Array of epochs in ET (TDB seconds past J2000)
     :return position_vector: Aberrated, cartesian state vector of the target with respect to EARTH in J2000 (GCRF) frame.
     """
-
-    log.warning("Missing tests: get_gcrf_state_vector")
 
     # Get position and LT from spice
     cstate_tuple, _ = spice.spkezr(target, epochs, "J2000", "NONE", "EARTH")
