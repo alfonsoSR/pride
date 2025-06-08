@@ -3,7 +3,6 @@ from .. import io
 from ..logger import log
 from astropy import time, coordinates
 import numpy as np
-from .. import coordinates as coord
 from scipy import interpolate
 from datetime import datetime
 

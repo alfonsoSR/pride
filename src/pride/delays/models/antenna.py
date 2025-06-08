@@ -4,9 +4,8 @@ from typing import TYPE_CHECKING, Any
 from ...logger import log
 from astropy import time
 import numpy as np
+from ...constants import CLIGHT
 from scipy import interpolate
-
-import spiceypy as spice
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -131,7 +130,6 @@ class AntennaDelays(Delay):
         assert isinstance(antenna, io.AntennaParameters)
         thermo: dict[str, Any] = resources[1]
         assert thermo is not None
-        clight = spice.clight() * 1e3
 
         # Geodetic coordinates of station
         assert obs.tstamps.location is not None  # Sanity
@@ -194,7 +192,7 @@ class AntennaDelays(Delay):
 
         # Axis offset delay
         n_air = 77.6e-6 * p / temp_k + 1.0  # Refractive index of the air
-        return -antenna.AO * np.sum(ks_uvec * ao_uvec, axis=-1) / clight * n_air
+        return -antenna.AO * np.sum(ks_uvec * ao_uvec, axis=-1) / CLIGHT * n_air
 
     @staticmethod
     def atmospheric_bending_angle(
@@ -301,7 +299,6 @@ class AntennaDelays(Delay):
         dec: np.ndarray = obs.source_dec
 
         # Calculate
-        clight = spice.clight() * 1e3
         match antenna.mount_type:
             case "MO_AZEL":
                 return (
@@ -314,7 +311,7 @@ class AntennaDelays(Delay):
                         + antenna.hv
                         - focus_factor * antenna.hs
                     )
-                ) / clight
+                ) / CLIGHT
             case "MO_EQUA":
                 return (
                     antenna.gamma_hf * dT * antenna.hf * np.sin(el)
@@ -326,7 +323,7 @@ class AntennaDelays(Delay):
                         + antenna.hv
                         - focus_factor * antenna.hs
                     )
-                ) / clight
+                ) / CLIGHT
             case "MO_XYNO" | "MO_XYEA":
                 print("using this one")
                 return (
@@ -343,7 +340,7 @@ class AntennaDelays(Delay):
                         + antenna.hv
                         - focus_factor * antenna.hs
                     )
-                ) / clight
+                ) / CLIGHT
             case "MO_RICH":  # Misplaced equatorial (RICHMOND)
 
                 # Error of the fixed axis and inclination wrt local horizon
@@ -374,7 +371,7 @@ class AntennaDelays(Delay):
                         + antenna.hv
                         - focus_factor * antenna.hs
                     )
-                ) / clight
+                ) / CLIGHT
             case _:
                 log.error(
                     f"Failed to calculate {self.name} delay for "

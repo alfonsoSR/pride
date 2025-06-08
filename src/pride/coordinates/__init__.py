@@ -15,4 +15,9 @@ PRIDE accesses EOP information via Astropy, which includes both types of bulleti
 
 from .core import EOP, seu2itrf, icrf2itrf, itrf2icrf
 
-__all__ = ["EOP", "seu2itrf", "icrf2itrf", "itrf2icrf"]
+__all__ = [
+    "EOP",
+    "seu2itrf",
+    "icrf2itrf",
+    "itrf2icrf",
+]

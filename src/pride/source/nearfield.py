@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING
 from astropy import time
 from ..logger import log
 import numpy as np
-import spiceypy as spice
-from ..constants import J2000, L_C
 from .. import io
 from .core import Source
+from .. import astro, utils
+from ..constants import CLIGHT
 
 if TYPE_CHECKING:
     from ..experiment import Experiment, Observation, Station
@@ -56,10 +56,6 @@ class NearFieldSource(Source):
 
         return source
 
-    def __load_ramping_data(self) -> None:
-
-        return None
-
     def tx_from_rx(self, rx: "time.Time", station: "Station") -> time.Time:
         """Calculate TX epoch from RX epoch at a station"""
 
@@ -70,43 +66,27 @@ class NearFieldSource(Source):
             )
             exit(1)
 
-        clight = spice.clight() * 1e3
-
         # Calculate GCRF coordinates of station at RX
         xsta_gcrf_rx = station.location(rx, frame="icrf")
 
         # Calculate BCRS position of source at RX
-        et_rx: np.ndarray = (rx.tdb - J2000.tdb).to("s").value  # type: ignore
-        xsrc_bcrf_rx = (
-            np.array(
-                spice.spkpos(self.spice_id, et_rx, "J2000", "NONE", "SSB")[0]
-            )
-            * 1e3
-        )
+        et_rx = utils.get_ephemeris_time_from_epoch(rx)
+        xsrc_bcrf_rx = astro.get_icrf_position_vector(self.spice_id, et_rx)
 
         # Calculate GM and BCRS position of celestial bodies at RX
         bodies = io.load_catalog("config.yaml")["Configuration"][
             "lt_correction_bodies"
         ]
-        # bodies = self.exp.setup.internal["lt_correction_bodies"]
-        bodies_gm = (
-            np.array([spice.bodvrd(body, "GM", 1)[1][0] for body in bodies])
-            * 1e9
+        bodies_gm = np.array(
+            [astro.get_body_gravitational_parameter(body) for body in bodies]
         )
         xbodies_bcrf_rx = np.array(
-            [
-                np.array(spice.spkpos(body, et_rx, "J2000", "NONE", "SSB")[0])
-                * 1e3
-                for body in bodies
-            ]
+            [astro.get_icrf_position_vector(body, et_rx) for body in bodies]
         )
 
         # Calculate Newtonian potential of all solar system bodies at geocenter
         _earth_idx = bodies.index("earth")
-        searth_bcrf_rx = (
-            np.array(spice.spkezr("earth", et_rx, "J2000", "NONE", "SSB")[0])
-            * 1e3
-        )
+        searth_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
         xearth_bcrf_rx = searth_bcrf_rx[:, :3]
         vearth_bcrf_rx = searth_bcrf_rx[:, 3:]
         xbodies_gcrf_rx = np.delete(
@@ -120,15 +100,11 @@ class NearFieldSource(Source):
         )
 
         # Calculate BCRS position of station at RX
-        xsta_bcrf_rx = (
-            xearth_bcrf_rx
-            + (1.0 - L_C - (U_earth / (clight * clight)))[:, None]
-            * xsta_gcrf_rx
-            - (
-                np.sum(vearth_bcrf_rx.T * xsta_gcrf_rx.T, axis=0)[:, None]
-                * vearth_bcrf_rx
-                / (2.0 * clight * clight)
-            )
+        xsta_bcrf_rx = astro.transform_position_from_gcrf_to_bcrf(
+            xsta_gcrf_rx,
+            xearth_bcrf_rx,
+            vearth_bcrf_rx,
+            U_earth,
         )
 
         # Calculate relative position of station wrt to celestial bodies at RX
@@ -136,8 +112,10 @@ class NearFieldSource(Source):
         r1b_mag = np.linalg.norm(r1b, axis=-1)  # (M, N)
 
         # Initialize light travel time between source and station
-        lt_0 = np.linalg.norm(xsta_bcrf_rx - xsrc_bcrf_rx, axis=-1) / clight
-        tx_0: time.Time = rx.tdb - time.TimeDelta(lt_0, format="sec")  # type: ignore
+        lt_0 = np.linalg.norm(xsta_bcrf_rx - xsrc_bcrf_rx, axis=-1) / CLIGHT
+        tx_0: time.Time = rx.tdb - time.TimeDelta(
+            lt_0, format="sec", scale="tdb"
+        )
 
         # Initialize variables for iterative estimation of TX
         lt_i = 0.0 * lt_0
@@ -160,34 +138,19 @@ class NearFieldSource(Source):
 
             # Update light travel time and TX
             lt_i = lt_0
-            tx_i = rx.tdb - time.TimeDelta(lt_i, format="sec")
+            tx_i = rx.tdb - time.TimeDelta(lt_i, format="sec", scale="tdb")
 
             # Convert TX to ephemeris time
-            et_tx: np.ndarray = (
-                (tx_i.tdb - J2000.tdb).to("s").value  # type: ignore
-            )
+            et_tx = utils.get_ephemeris_time_from_epoch(tx_i)  # type: ignore
 
             # Calculate BCRF coordinates of source at TX
-            ssrc_bcrf_tx = (
-                np.array(
-                    spice.spkezr(self.spice_id, et_tx, "J2000", "NONE", "SSB")[
-                        0
-                    ]
-                )
-                * 1e3
-            )
+            ssrc_bcrf_tx = astro.get_icrf_state_vector(self.spice_id, et_tx)
             xsrc_bcrf_tx = ssrc_bcrf_tx[:, :3]
             vsrc_bcrf_tx = ssrc_bcrf_tx[:, 3:]
 
             # Calculate BCRF coordinates of celestial bodies at TX
             xbodies_bcrf_tx = np.array(
-                [
-                    np.array(
-                        spice.spkpos(body, et_tx, "J2000", "NONE", "SSB")[0]
-                    )
-                    * 1e3
-                    for body in bodies
-                ]
+                [astro.get_icrf_position_vector(body, et_tx) for body in bodies]
             )
 
             # Calculate relativistic correction
@@ -196,9 +159,9 @@ class NearFieldSource(Source):
             r0b = xsrc_bcrf_tx[None, :, :] - xbodies_bcrf_tx  # (M, N, 3)
             r0b_mag = np.linalg.norm(r0b, axis=-1)  # (M, N)
             r01b_mag = np.linalg.norm(r1b - r0b, axis=-1)  # (M, N)
-            gmc = 2.0 * bodies_gm[:, None] / (clight * clight)  # (M, 1)
+            gmc = 2.0 * bodies_gm[:, None] / (CLIGHT * CLIGHT)  # (M, 1)
             rlt_01 = np.sum(
-                (gmc / clight)
+                (gmc / CLIGHT)
                 * np.log(
                     (r0b_mag + r1b_mag + r01b_mag + gmc)
                     / (r0b_mag + r1b_mag - r01b_mag + gmc)
@@ -207,16 +170,16 @@ class NearFieldSource(Source):
             )
 
             # Evaluate function and derivative for Newton-Raphson
-            f = lt_i - (r01_mag / clight) - rlt_01
+            f = lt_i - (r01_mag / CLIGHT) - rlt_01
             dfdtx = (
                 -1.0
                 + np.sum((r01 / r01_mag[:, None]) * vsrc_bcrf_tx, axis=-1)
-                / clight
+                / CLIGHT
             )
 
             # Update light travel time and TX
             lt_0 = lt_i + f / dfdtx
-            tx_0 = rx.tdb - time.TimeDelta(lt_0, format="sec")  # type: ignore
+            tx_0 = rx.tdb - time.TimeDelta(lt_0, format="sec", scale="tdb")
 
             # # Update light travel time and TX
             # dot_p01_c = (
@@ -241,25 +204,16 @@ class NearFieldSource(Source):
         tx = self.tx_from_rx(obs.tstamps, obs.station)
 
         # Convert TX and RX epochs to ephemeris time
-        et_tx: np.ndarray = (tx.tdb - J2000.tdb).to("s").value  # type: ignore
-        et_rx: np.ndarray = (
-            (obs.tstamps.tdb - J2000.tdb).to("s").value  # type: ignore
-        )
+        et_tx = utils.get_ephemeris_time_from_epoch(tx)
+        et_rx = utils.get_ephemeris_time_from_epoch(obs.tstamps)
 
         # Calculate aberrated position of source wrt station
-        xsrc_gcrf_tx = np.array(
-            spice.spkpos(self.spice_id, et_tx, "J2000", "NONE", "EARTH")[0]
-            * 1e3
-        )
+        xsrc_gcrf_tx = astro.get_gcrf_position_vector(self.spice_id, et_tx)
         xsrc_sta_ab = xsrc_gcrf_tx - obs.station.location(obs.tstamps, "icrf")
 
         # Calculate aberrated position of source wrt Earth
-        xsrc_bcrf_tx = np.array(
-            spice.spkpos(self.spice_id, et_tx, "J2000", "NONE", "SSB")[0] * 1e3
-        )
-        xearth_bcrf_rx = np.array(
-            spice.spkpos("earth", et_rx, "J2000", "NONE", "SSB")[0] * 1e3
-        )
+        xsrc_bcrf_tx = astro.get_icrf_position_vector(self.spice_id, et_tx)
+        xearth_bcrf_rx = astro.get_icrf_position_vector("earth", et_rx)
         xsrc_earth_ab = (xsrc_bcrf_tx - xearth_bcrf_rx).T
 
         # Calculate aberrated pointing vector in SEU [az, el]

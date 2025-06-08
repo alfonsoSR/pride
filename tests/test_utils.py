@@ -5,6 +5,7 @@ import pytest
 import numpy as np
 from astropy import time
 import struct
+from pride import constants
 
 TOL = 1e-15
 
@@ -303,5 +304,16 @@ def test_peek_buffer(
 
     assert output == expected
     assert index == expected_index
+
+    return None
+
+
+@pytest.mark.parametrize("offset", [2345.0, 0.0, 76325.0])
+def test_et_from_epoch(offset: float) -> None:
+
+    epoch = constants.J2000 + time.TimeDelta(offset, format="sec", scale="tdb")
+    assert np.isclose(
+        utils.get_ephemeris_time_from_epoch(epoch)[0], offset, rtol=TOL
+    )
 
     return None

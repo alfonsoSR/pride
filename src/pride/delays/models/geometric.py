@@ -1,13 +1,12 @@
 from ..core import Delay
-from ... import io
+from ... import astro, utils
 from typing import TYPE_CHECKING, Any
 from ...logger import log
 from astropy import time
 import numpy as np
 
-import spiceypy as spice
 from ...source import FarFieldSource, NearFieldSource
-from ...constants import J2000, L_C
+from ...constants import L_C, CLIGHT
 
 if TYPE_CHECKING:
     from ...experiment.observation import Observation
@@ -69,41 +68,27 @@ class Geometric(Delay):
         #######################################################################
 
         # Initialization
-        clight = spice.clight() * 1e3
-        clight2 = clight * clight
+        clight2 = CLIGHT * CLIGHT
 
         # Calculate BCRF position of source at TX epoch
-        et_tx: np.ndarray = (tx - J2000.tdb).to("s").value  # type: ignore
-        xsrc_bcrf_tx = (
-            np.array(
-                spice.spkpos(source.spice_id, et_tx, "J2000", "NONE", "SSB")[0]
-            )
-            * 1e3
-        )
+        et_tx = utils.get_ephemeris_time_from_epoch(tx)
+        xsrc_bcrf_tx = astro.get_icrf_position_vector(source.spice_id, et_tx)
 
         # Calculate BCRF position of phase center at estimated RX epoch
         # NOTE: Seems logical to initialize RX with the one of the station
-        et_rx: np.ndarray = (rx_station - J2000.tdb).to("s").value  # type: ignore
-        xphc_bcrf_rx = (
-            np.array(spice.spkpos("EARTH", et_rx, "J2000", "NONE", "SSB")[0])
-            * 1e3
-        )
+        et_rx = utils.get_ephemeris_time_from_epoch(rx_station)
+        xphc_bcrf_rx = astro.get_icrf_position_vector("earth", et_rx)
 
         # Calculate gravitational parameter of celestial bodies
         _bodies: list = self.exp.setup.internal["lt_correction_bodies"]
         bodies = [bi for bi in _bodies if bi != "earth"]
-        bodies_gm = (
-            np.array([spice.bodvrd(body, "GM", 1)[1][0] for body in bodies])
-            * 1e9
+        bodies_gm = np.array(
+            [astro.get_body_gravitational_parameter(body) for body in bodies]
         )
 
         # Calculate BCRF positions of celestial bodies at TX
         xbodies_bcrf_tx = np.array(
-            [
-                np.array(spice.spkpos(body, et_tx, "J2000", "NONE", "SSB")[0])
-                * 1e3
-                for body in bodies
-            ]
+            [astro.get_icrf_position_vector(body, et_tx) for body in bodies]
         )
 
         # Calculate position of source wrt celestial bodies at TX
@@ -112,8 +97,8 @@ class Geometric(Delay):
 
         # Initialize light travel time and rx epoch
         # lt_np1 = LT_{n+1}
-        lt_np1 = np.linalg.norm(xphc_bcrf_rx - xsrc_bcrf_tx, axis=-1) / clight
-        rx_np1: time.Time = tx + time.TimeDelta(lt_np1, format="sec")
+        lt_np1 = np.linalg.norm(xphc_bcrf_rx - xsrc_bcrf_tx, axis=-1) / CLIGHT
+        rx_np1 = tx + time.TimeDelta(lt_np1, format="sec", scale="tdb")
 
         # Initialize variables for iteration
         lt_n = 0.0 * lt_np1
@@ -130,30 +115,19 @@ class Geometric(Delay):
 
             # Update light travel time and RX
             lt_n = lt_np1
-            rx_n = tx + time.TimeDelta(lt_n, format="sec")
+            rx_n = tx + time.TimeDelta(lt_n, format="sec", scale="tdb")
 
             # Convert RX to ephemeris time
-            et_rx = (rx_n - J2000.tdb).to("s").value  # type: ignore
+            et_rx = utils.get_ephemeris_time_from_epoch(rx_n)
 
             # Calculate BCRF coordinates of phase center at RX
-            sphc_bcrf_rx = (
-                np.array(
-                    spice.spkezr("EARTH", et_rx, "J2000", "NONE", "SSB")[0]
-                )
-                * 1e3
-            )
+            sphc_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
             xphc_bcrf_rx = sphc_bcrf_rx[:, :3]
             vphc_bcrf_rx = sphc_bcrf_rx[:, 3:]
 
             # Calculate BCRF positions of celestial bodies at RX
             xbodies_bcrf_rx = np.array(
-                [
-                    np.array(
-                        spice.spkpos(body, et_rx, "J2000", "NONE", "SSB")[0]
-                    )
-                    * 1e3
-                    for body in bodies
-                ]
+                [astro.get_icrf_position_vector(body, et_rx) for body in bodies]
             )
 
             # Calculate relativistic correction
@@ -164,7 +138,7 @@ class Geometric(Delay):
             r02b_mag = np.linalg.norm(r2b - r0b, axis=-1)  # (M, N)
             gmc = 2.0 * bodies_gm[:, None] / clight2  # (M, 1)
             rlt_02 = np.sum(
-                (gmc / clight)
+                (gmc / CLIGHT)
                 * np.log(
                     (r0b_mag + r2b_mag + r02b_mag + gmc)
                     / (r0b_mag + r2b_mag - r02b_mag + gmc)
@@ -173,16 +147,16 @@ class Geometric(Delay):
             )
 
             # Evaluate function and derivative
-            f = lt_n - (r02_mag / clight) - rlt_02
+            f = lt_n - (r02_mag / CLIGHT) - rlt_02
             dfdrx = (
                 1.0
                 - np.sum((r02 / r02_mag[:, None]) * vphc_bcrf_rx, axis=-1)
-                / clight
+                / CLIGHT
             )
 
             # Update light travel time and RX
             lt_np1 = lt_n - f / dfdrx
-            rx_np1 = tx + time.TimeDelta(lt_np1, format="sec")
+            rx_np1 = tx + time.TimeDelta(lt_np1, format="sec", scale="tdb")
 
             # Update iteration
             n_iter += 1
@@ -194,61 +168,29 @@ class Geometric(Delay):
         # Calculate BCRF position of station at RX1
         xsta_gcrf_rx1 = obs.station.location(obs.tstamps, frame="icrf")
         rx1 = rx_station
-        et_rx1 = (rx1 - J2000.tdb).to("s").value  # type: ignore
-        searth_bcrf_rx1 = (
-            np.array(spice.spkezr("EARTH", et_rx1, "J2000", "NONE", "SSB")[0])
-            * 1e3
-        )
+        et_rx1 = utils.get_ephemeris_time_from_epoch(rx1)
+        searth_bcrf_rx1 = astro.get_icrf_state_vector("earth", et_rx1)
         xearth_bcrf_rx1 = searth_bcrf_rx1[:, :3]
         vearth_bcrf_rx1 = searth_bcrf_rx1[:, 3:]
-        xsun_bcrf_rx1 = (
-            np.array(spice.spkpos("SUN", et_rx1, "J2000", "NONE", "SSB")[0])
-            * 1e3
-        )
-        U_earth = (
-            spice.bodvrd("SUN", "GM", 1)[1][0]
-            * 1e9
-            / np.linalg.norm(xsun_bcrf_rx1 - xearth_bcrf_rx1, axis=-1)
-        )
-        xsta_bcrf_rx1 = (
-            xearth_bcrf_rx1
-            + (1.0 - U_earth[:, None] / clight2 - L_C) * xsta_gcrf_rx1
-            - 0.5
-            * np.sum(vearth_bcrf_rx1 * xsta_gcrf_rx1, axis=-1)[:, None]
-            * vearth_bcrf_rx1
-            / clight2
+        xsun_bcrf_rx1 = astro.get_icrf_position_vector("sun", et_rx1)
+        U_earth = astro.get_body_gravitational_parameter(
+            "sun"
+        ) / np.linalg.norm(xsun_bcrf_rx1 - xearth_bcrf_rx1, axis=-1)
+        xsta_bcrf_rx1 = astro.transform_position_from_gcrf_to_bcrf(
+            xsta_gcrf_rx1, xearth_bcrf_rx1, vearth_bcrf_rx1, U_earth
         )
 
         # Calculate BCRF position of phase center at RX2
         rx2 = rx_np1
-        et_rx2 = (rx2 - J2000.tdb).to("s").value  # type: ignore
-        xphc_bcrf_rx2 = (
-            np.array(spice.spkpos("EARTH", et_rx2, "J2000", "NONE", "SSB")[0])
-            * 1e3
-        )
+        et_rx2 = utils.get_ephemeris_time_from_epoch(rx2)
+        xphc_bcrf_rx2 = astro.get_icrf_position_vector("earth", et_rx2)
 
         # Calculate position of celestial bodies at RX1 and RX2
-        xbodies_bcrf_rx1 = (
-            np.array(
-                [
-                    np.array(
-                        spice.spkpos(body, et_rx1, "J2000", "NONE", "SSB")[0]
-                    )
-                    for body in bodies
-                ]
-            )
-            * 1e3
+        xbodies_bcrf_rx1 = np.array(
+            [astro.get_icrf_position_vector(body, et_rx1) for body in bodies]
         )
-        xbodies_bcrf_rx2 = (
-            np.array(
-                [
-                    np.array(
-                        spice.spkpos(body, et_rx2, "J2000", "NONE", "SSB")[0]
-                    )
-                    for body in bodies
-                ]
-            )
-            * 1e3
+        xbodies_bcrf_rx2 = np.array(
+            [astro.get_icrf_position_vector(body, et_rx2) for body in bodies]
         )
 
         # Calculate relativistic correction
@@ -262,9 +204,9 @@ class Geometric(Delay):
         r1b_mag = np.linalg.norm(r1b, axis=-1)
         r2b = xphc_bcrf_rx2[None, :, :] - xbodies_bcrf_rx2  # (M, N, 3)
         r2b_mag = np.linalg.norm(r2b, axis=-1)
-        gmc = 2.0 * bodies_gm[:, None] / (clight * clight)  # (M, 1)
+        gmc = 2.0 * bodies_gm[:, None] / clight2  # (M, 1)
         tg_12 = np.sum(
-            (gmc / clight)
+            (gmc / CLIGHT)
             * np.log(
                 (r2b_mag + r0b_mag + r02_mag)
                 * (r1b_mag + r0b_mag - r01_mag)
@@ -300,8 +242,7 @@ class Geometric(Delay):
         assert isinstance(source, FarFieldSource)
 
         # Initialization
-        clight = spice.clight() * 1e3
-        clight2 = clight * clight
+        clight2 = CLIGHT * CLIGHT
 
         # Calculate baseline vector [For geocenter phase center it is just
         # the GCRF position of the station at RX]
@@ -309,30 +250,19 @@ class Geometric(Delay):
         xsta_gcrf_rx = baseline
 
         # Calculate potential at geocenter
-        et_rx: np.ndarray = (obs.tstamps.tdb - J2000.tdb).to("s").value  # type: ignore
-        searth_bcrf_rx = (
-            np.array(spice.spkezr("EARTH", et_rx, "J2000", "NONE", "SSB")[0])
-            * 1e3
-        )
+        et_rx = utils.get_ephemeris_time_from_epoch(obs.tstamps)
+        searth_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
         xearth_bcrf_rx = searth_bcrf_rx[:, :3]
         vearth_bcrf_rx = searth_bcrf_rx[:, 3:]
-        xsun_bcrf_rx = (
-            np.array(spice.spkpos("SUN", et_rx, "J2000", "NONE", "SSB")[0])
-            * 1e3
-        )
-        gm_sun = spice.bodvrd("SUN", "GM", 1)[1][0] * 1e9
+        xsun_bcrf_rx = astro.get_icrf_position_vector("sun", et_rx)
+        gm_sun = astro.get_body_gravitational_parameter("sun")
         U_earth = gm_sun / np.linalg.norm(
             xsun_bcrf_rx - xearth_bcrf_rx, axis=-1
         )
 
         # Calculate BCRF position of station at RX
-        xsta_bcrf_rx = (
-            xearth_bcrf_rx
-            + (1.0 - U_earth[:, None] / clight2 - L_C) * xsta_gcrf_rx
-            - 0.5
-            * np.sum(vearth_bcrf_rx * xsta_gcrf_rx, axis=-1)[:, None]
-            * vearth_bcrf_rx
-            / clight2
+        xsta_bcrf_rx = astro.transform_position_from_gcrf_to_bcrf(
+            xsta_gcrf_rx, xearth_bcrf_rx, vearth_bcrf_rx, U_earth
         )
 
         # Position of phase center is just that of Earth for geocenter
@@ -342,16 +272,11 @@ class Geometric(Delay):
         #######################################################################
         _bodies = self.exp.setup.internal["lt_correction_bodies"]
         bodies = [bi for bi in _bodies if bi != "earth"]
-        bodies_gm = (
-            np.array([spice.bodvrd(body, "GM", 1)[1][0] for body in bodies])
-            * 1e9
+        bodies_gm = np.array(
+            [astro.get_body_gravitational_parameter(body) for body in bodies]
         )
         xbodies_bcrf_rx = np.array(
-            [
-                np.array(spice.spkpos(body, et_rx, "J2000", "NONE", "SSB")[0])
-                * 1e3
-                for body in bodies
-            ]
+            [astro.get_icrf_position_vector(body, et_rx) for body in bodies]
         )
         xbodies_sta_bcrf_rx = xbodies_bcrf_rx - xsta_bcrf_rx
 
@@ -359,15 +284,14 @@ class Geometric(Delay):
         ks = obs.source.observed_ks  # Pointing vector
         et_planets = (
             et_rx
-            - np.sum(ks[None, None, :] * xbodies_sta_bcrf_rx, axis=-1) / clight
+            - np.sum(ks[None, None, :] * xbodies_sta_bcrf_rx, axis=-1) / CLIGHT
         )
         et_closest = np.where(et_rx[None, :] < et_planets, et_rx, et_planets)
 
         # Calculate position of celestial bodies at closest approach
         xbodies_bcrf_closest = np.array(
             [
-                np.array(spice.spkpos(body, et_body, "J2000", "NONE", "SSB")[0])
-                * 1e3
+                astro.get_icrf_position_vector(body, et_body)
                 for body, et_body in zip(bodies, et_closest)
             ]
         )
@@ -380,12 +304,12 @@ class Geometric(Delay):
             xphc_bcrf_rx[None, :, :]
             - np.sum(ks[None, :] * baseline, axis=-1)[None, :, None]
             * vearth_bcrf_rx[None, :, :]
-            / clight
+            / CLIGHT
             - xbodies_bcrf_closest
         )
         r2j_mag = np.linalg.norm(r2j, axis=-1)
         k_r2j = np.sum(ks[None, :] * r2j, axis=-1)
-        gmc = 2.0 * bodies_gm[:, None] / (clight * clight2)
+        gmc = 2.0 * bodies_gm[:, None] / (CLIGHT * clight2)
         T_g = np.sum(
             gmc * np.log((r1j_mag + k_r1j) / (r2j_mag + k_r2j)), axis=0
         )
@@ -397,10 +321,10 @@ class Geometric(Delay):
         vearth_mag2 = np.linalg.norm(vearth_bcrf_rx, axis=-1) ** 2
         return (
             T_g
-            - (ks_b / clight)
+            - (ks_b / CLIGHT)
             * (1.0 - (2.0 * U_earth / clight2) - (0.5 * vearth_mag2 / clight2))
-            - (vearth_b / clight2) * (1.0 + 0.5 * ks_vearth / clight)
-        ) / (1.0 + ks_vearth / clight)
+            - (vearth_b / clight2) * (1.0 + 0.5 * ks_vearth / CLIGHT)
+        ) / (1.0 + ks_vearth / CLIGHT)
 
     def calculate(self, obs: "Observation") -> Any:
 

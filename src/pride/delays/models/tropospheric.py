@@ -1,13 +1,12 @@
 from ..core import Delay
 from typing import TYPE_CHECKING, Any
 from ...logger import log
-import requests
 from astropy import time
 import numpy as np
 from scipy import interpolate
 from ... import utils, io
+from ...constants import CLIGHT
 from ...external import vienna
-import spiceypy as spice
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -101,7 +100,6 @@ class Tropospheric(Delay):
     def calculate(self, obs: "Observation") -> Any:
 
         # Initialization
-        clight = spice.clight() * 1e3
         resources = self.loaded_resources[obs.station.name]
         mjd: np.ndarray = obs.tstamps.mjd  # type: ignore
         ah: np.ndarray = resources["ah"](mjd)
@@ -142,4 +140,4 @@ class Tropospheric(Delay):
             + dw * mfw
             + mgh * (gnh * np.cos(az) + geh * np.sin(az))
             + mgw * (gnw * np.cos(az) + gew * np.sin(az))
-        ) / clight
+        ) / CLIGHT
