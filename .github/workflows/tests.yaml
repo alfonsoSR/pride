@@ -26,12 +26,9 @@ jobs:
         run: |
           brew install gfortran
           export PATH="$(brew --prefix gfortran)/bin:$PATH" >> $GITHUB_ENV
-          export FC=$(brew --prefix gfortran)/bin/gfortran >> $GITHUB_ENV
 
       - name: Install package
         run: |
-          echo "The Fortran compiler is $FC"
-          echo "The environment is $GITHUB_ENV"
           python -m pip install .[test] -v
 
       - name: Test package
