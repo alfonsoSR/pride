@@ -25,7 +25,6 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           echo "PATH=$(brew --prefix gfortran)/bin:$PATH" >> $GITHUB_ENV
-          echo "FC=gfortran" >> $GITHUB_ENV
 
       - name: Install package
         run: |
