@@ -24,10 +24,12 @@ jobs:
       - name: Set fortran compiler on macOS
         if: runner.os == 'macOS'
         run: |
-          echo "PATH=$(brew --prefix gfortran)/bin/gfortran:$PATH" >> $GITHUB_ENV
+          export PATH="$(brew --prefix gfortran)/bin:$PATH" >> $GITHUB_ENV
+          export FC=$(brew --prefix gfortran)/bin/gfortran >> $GITHUB_ENV
 
       - name: Install package
         run: |
+          echo "The Fortran compiler is $FC"
           python -m pip install .[test] -v
 
       - name: Test package
