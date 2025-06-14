@@ -36,8 +36,6 @@ class Geometric(Delay):
 
     def load_resources(self) -> dict[str, Any]:
 
-        log.debug(f"Loading resources for {self.name} delay")
-
         return {}
 
     def calculate_nearfield(self, obs: "Observation") -> np.ndarray:

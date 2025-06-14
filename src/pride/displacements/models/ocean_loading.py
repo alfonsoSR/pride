@@ -29,6 +29,8 @@ class OceanLoading(Displacement):
             )
             exit(1)
 
+        log.debug(f"Found {source}")
+
         self._resources["source"] = source
 
         return None

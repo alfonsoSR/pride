@@ -162,7 +162,7 @@ class Observation:
             )
             exit(1)
 
-        log.debug(
+        log.info(
             f"Calculating delays of {self.source.name} from {self.station.name}"
         )
         delay: np.ndarray = np.zeros_like(self.tstamps.jd)  # type: ignore

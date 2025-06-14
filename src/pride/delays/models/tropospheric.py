@@ -49,8 +49,6 @@ class Tropospheric(Delay):
 
     def load_resources(self) -> dict[str, dict[str, Any]]:
 
-        log.info(f"Loading resources for {self.name} delay")
-
         resources: dict[str, dict[str, Any]] = {}
         for baseline in self.exp.baselines:
 

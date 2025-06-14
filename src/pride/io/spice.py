@@ -167,6 +167,7 @@ class SpiceKernelManager:
 
             # If already present, skip
             if kernel_path.exists():
+                log.debug(f"Found kernel: {kernel_path}")
                 continue
 
             # Try to download the kernel

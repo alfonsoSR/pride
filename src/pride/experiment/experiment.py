@@ -93,6 +93,8 @@ class Experiment:
         self.displacement_models = self.initialize_displacement_models()
         self.delay_models = self.initialize_delay_models()
 
+        log.info(f"Experiment {self.name} successfully initialized")
+
         return None
 
     def __ensure_spice_kernels(self, target: str) -> Path:
@@ -101,6 +103,8 @@ class Experiment:
         :param target: Name of the target
         :return: Path to the metakernel
         """
+
+        log.info(f"Setting up SPICE kernels")
 
         # Initialize SPICE kernel manager
         kernel_manager = io.SpiceKernelManager(
@@ -113,6 +117,8 @@ class Experiment:
 
         # Ensure SPICE kernels listed in the metakernel
         kernel_manager.ensure_kernels(metakernel)
+
+        log.info("All required kernels present")
 
         return metakernel
 
@@ -297,13 +303,11 @@ class Experiment:
         :return baselines: List of Baseline objects populated with observations.
         """
 
-        log.info("Initializing baselines")
-
         # Load station IDs and names from VEX file
         stations_dictionary = vex.load_station_ids_and_names(ignored_stations)
 
         # Initialize dictionary of empty baselines (without observations)
-        log.info("Initializing empty baselines")
+        log.info("Initializing baselines")
         baselines_dictionary: dict[str, "Baseline"] = {
             station_id: Baseline(
                 center=self.phase_center,
@@ -313,6 +317,7 @@ class Experiment:
         }
 
         # Collect observation bands and timestamps
+        log.info("Collecting scans from VEX file")
         observation_bands, observation_tstamps = (
             self.collect_observation_bands_and_timestamps(vex)
         )
@@ -358,11 +363,14 @@ class Experiment:
         return None
 
     def save_output(self) -> None:
+
         log.warning("The save_output method should be refactored!")
 
         # Initialize output directory
         outdir = Path(self.setup.general["output_directory"]).resolve()
         outdir.mkdir(parents=True, exist_ok=True)
+
+        log.info(f"Saving output in {outdir}")
 
         # Output files and observations
         observations: dict[tuple[str, str], "Observation"] = {}

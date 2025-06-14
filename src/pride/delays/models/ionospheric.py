@@ -61,8 +61,6 @@ class Ionospheric(Delay):
 
     def load_resources(self) -> dict[str, Any]:
 
-        log.debug(f"Loading resources for {self.name} delay")
-
         # Generate TEC maps
         tec_grid_interpolators: dict[
             time.Time, interpolate.RegularGridInterpolator

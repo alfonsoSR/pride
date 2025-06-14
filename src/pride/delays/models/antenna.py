@@ -56,8 +56,6 @@ class AntennaDelays(Delay):
 
     def load_resources(self) -> dict[str, Any]:
 
-        log.info(f"Loading resources for {self.name} delay")
-
         resources: dict[str, tuple[io.AntennaParameters | None, Any]] = {}
         for baseline in self.exp.baselines:
 
@@ -108,6 +106,14 @@ class AntennaDelays(Delay):
     def calculate(self, obs: "Observation") -> Any:
         """Groups thermal deformation and antenna axis offset"""
 
+        # If atmospheric data is not available, return with zeros
+        if self.loaded_resources[obs.station.name][1] is None:
+            log.warning(
+                f"{self.name} delay set to zero for {obs.station.name}: "
+                "Missing antenna parameters"
+            )
+            return np.zeros_like(obs.tstamps.mjd)
+
         dt_axis_offset = self.calculate_axis_offset(obs)
         dt_thermal_deformation = self.calculate_thermal_deformation(obs)
 
@@ -117,9 +123,6 @@ class AntennaDelays(Delay):
 
         # Load resources
         resources = self.loaded_resources[obs.station.name]
-        if resources[1] is None:
-            log.warning(f"{self.name} delay set to zero for {obs.station.name}")
-            return np.zeros_like(obs.tstamps.jd)
 
         antenna: io.AntennaParameters = resources[0]
         assert isinstance(antenna, io.AntennaParameters)
@@ -265,9 +268,6 @@ class AntennaDelays(Delay):
         # Load resources
         resources = self.loaded_resources[obs.station.name]
         thermo: dict[str, Any] = resources[1]
-        if thermo is None:
-            log.warning(f"{self.name} delay set to zero for {obs.station.name}")
-            return np.zeros_like(obs.tstamps.jd)
 
         antenna: io.AntennaParameters = resources[0]
         assert isinstance(antenna, io.AntennaParameters)

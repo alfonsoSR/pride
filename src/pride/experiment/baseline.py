@@ -96,7 +96,7 @@ class Baseline:
         :param eops: Interface from which to obtain Earth Orientation Parameters during the time span of the experiment
         """
 
-        log.debug(f"Updating {self.id} baseline with observations")
+        log.info(f"Updating {self.id} baseline with observations")
 
         # Merge time stamps of all the observations
         __tstamps: time.Time = time.Time(
@@ -170,7 +170,7 @@ class Baseline:
         self, displacement_models: list["Displacement"]
     ) -> None:
 
-        log.debug(
+        log.info(
             f"Updating {self.station.name} station with geophysical "
             "displacements"
         )

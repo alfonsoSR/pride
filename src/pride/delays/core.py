@@ -31,6 +31,7 @@ class Delay(metaclass=ABCMeta):
         self.ensure_resources()
 
         # Load resources
+        log.debug(f"Loading resources for {self.name} delay")
         self.loaded_resources = self.load_resources()
 
         return None
