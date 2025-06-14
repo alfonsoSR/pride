@@ -25,11 +25,6 @@ class AntennaDelays(Delay):
     """
 
     name = "AntennaDelays"
-    etc = {
-        "url": "https://vmf.geo.tuwien.ac.at/trop_products",
-    }
-    requires_spice = False
-    station_specific = True
 
     def ensure_resources(self) -> None:
 

@@ -16,9 +16,6 @@ class Geometric(Delay):
     """Geometric delay"""
 
     name = "Geometric"
-    etc = {}
-    requires_spice = True
-    station_specific = False
 
     def ensure_resources(self) -> None:
 

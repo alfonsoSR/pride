@@ -17,14 +17,6 @@ class Tropospheric(Delay):
     """Tropospheric correction to light travel time"""
 
     name = "Tropospheric"
-    etc = {
-        "coords_url": "https://vmf.geo.tuwien.ac.at/station_coord_files/",
-        "coeffs_url": (
-            "https://vmf.geo.tuwien.ac.at/trop_products/VLBI/V3GR/"
-            "V3GR_OP/daily/"
-        ),
-        "update_interval_hours": 6.0,  # Ignored, this was for Petrov
-    }
 
     def ensure_resources(self) -> None:
         """Check for site coordinates and site-wise tropospheric data"""

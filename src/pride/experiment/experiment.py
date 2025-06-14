@@ -89,7 +89,7 @@ class Experiment:
         )
 
         # Initialize delay and displacement models
-        self.requires_spice = False
+        self.requires_spice = True
         self.displacement_models = self.initialize_displacement_models()
         self.delay_models = self.initialize_delay_models()
 
@@ -172,8 +172,6 @@ class Experiment:
                     )
                     exit(1)
                 displacement_models.append(DISPLACEMENT_MODELS[displacement]())
-                if DISPLACEMENT_MODELS[displacement].requires_spice:
-                    self.requires_spice = True
 
         log.info("Displacement models successfully initialized")
 
@@ -198,8 +196,6 @@ class Experiment:
                     )
                     exit(1)
                 _delay_models.append(DELAY_MODELS[delay_id](self))
-                if DELAY_MODELS[delay_id].requires_spice:
-                    self.requires_spice = True
 
         log.info("Delay models successfully initialized")
 

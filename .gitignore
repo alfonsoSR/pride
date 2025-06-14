@@ -6,6 +6,7 @@
 doc
 src/pride/displacements/old.py
 dev
+validation
 
 # Compiled extension modules
 *.so

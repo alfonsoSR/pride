@@ -27,16 +27,6 @@ class Ionospheric(Delay):
     """
 
     name = "Ionospheric"
-    etc = {
-        "url": "https://cddis.nasa.gov/archive/gps/products/ionex",
-        "new_format_week": 2238,
-        "gps_week_ref": time.Time("1980-01-06T00:00:00", scale="utc"),
-        "model": "igs",
-        "ftp_server": "gdc.cddis.eosdis.nasa.gov",
-        "solution_type": "FIN",
-    }
-    requires_spice = False
-    station_specific = True
 
     def ensure_resources(self) -> None:
 
