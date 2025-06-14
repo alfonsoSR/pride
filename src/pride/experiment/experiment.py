@@ -349,7 +349,6 @@ class Experiment:
                 center=self.phase_center,
                 station=stations_dictionary[station_id],
                 observations=station_observations,
-                eops=self.eops,
             )
 
             # Add baseline to list
