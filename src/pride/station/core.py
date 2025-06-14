@@ -1,13 +1,10 @@
-from typing import TYPE_CHECKING, Literal, Any
+from typing import Literal, Any
 from .. import io
 from ..logger import log
 from astropy import time, coordinates
 import numpy as np
 from scipy import interpolate
 from datetime import datetime
-
-if TYPE_CHECKING:
-    from .experiment import Experiment
 
 
 class Station:

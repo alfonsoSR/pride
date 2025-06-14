@@ -11,7 +11,7 @@ from ..coordinates import EOP
 from ..displacements import DISPLACEMENT_MODELS
 from ..delays import DELAY_MODELS
 from ..source import Source, NearFieldSource, FarFieldSource
-from .station import Station
+from ..station.core import Station
 from .baseline import Baseline
 from .observation import Observation
 import numpy as np
