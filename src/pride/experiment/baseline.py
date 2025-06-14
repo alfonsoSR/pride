@@ -47,6 +47,8 @@ class Baseline:
         eops: "coord.EOP",
     ) -> None:
 
+        log.debug(f"Initializing baseline: {station.name}")
+
         # Merge timestamps of all the observations
         tstamps_no_location = time.Time(
             [observation.tstamps for observation in observations],
@@ -114,6 +116,7 @@ class Baseline:
         self.station = station
         self.observations = observations
         self.tstamps = tstamps
+
         self.a_tstamps = a_tstamps
         self.a_eops = augmented_eops
         self.icrf2itrf = icrf2itrf
@@ -155,7 +158,6 @@ class Baseline:
             "lon": self.a_lon,
             "xsta_itrf": self.station.location(self.a_tstamps),
         }
-        log.debug("Right after shared resources")
 
         # Station position at reference epochs [Tectonic corrected]
         xsta_itrf = shared_resources["xsta_itrf"][1::3]
