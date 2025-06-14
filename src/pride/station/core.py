@@ -138,47 +138,6 @@ class Station:
             exit(1)
         return val
 
-    # @staticmethod
-    # def from_experiment(
-    #     name: str, id: str, experiment: "Experiment", uplink: bool = False
-    # ) -> "Station":
-
-    #     station = Station(name, id)
-    #     setup = experiment.setup
-
-    #     # Check if station is the phase center
-    #     if station.name == setup.general["phase_center"]:
-    #         station.is_phase_center = True
-
-    #         if station.name == "GEOCENTR":
-    #             return station
-    #         else:
-    #             raise NotImplementedError(
-    #                 "Using an arbitrary station as phase center is not "
-    #                 "supported yet"
-    #             )
-
-    #     # Check if station is uplink
-    #     if uplink:
-    #         station.is_uplink = True
-
-    #     # Update with clock information
-    #     station.clock_data = experiment.clock_parameters[station.id]
-
-    #     # Get reference epoch, position and velocity for the station
-    #     station._ref_epoch = io.load_reference_epoch_for_station_catalog()
-    #     station._ref_location = io.load_station_coordinates_from_catalog(
-    #         station.name
-    #     )
-    #     station._ref_velocity = io.load_station_velocity_from_catalog(
-    #         station.name
-    #     )
-
-    #     # Set flag for tectonic correction
-    #     station.has_tectonic_correction = True
-
-    #     return station
-
     def tectonic_corrected_location(
         self, epoch: "time.Time"
     ) -> "coordinates.EarthLocation":
