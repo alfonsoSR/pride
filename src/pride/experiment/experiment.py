@@ -79,8 +79,8 @@ class Experiment:
                 "Using a station as phase center is currently not supported"
             )
             exit(1)
-        self.phase_center = Station.from_experiment(
-            self.setup.general["phase_center"], "00", self
+        self.phase_center = Station(
+            self.setup.general["phase_center"], "00", True, None
         )
 
         # Initialize baselines
@@ -310,10 +310,11 @@ class Experiment:
         log.info("Initializing experiment stations")
         stations_dictionary: dict[str, "Station"] = {}
         for station_id, station_name in station_catalog.items():
-            stations_dictionary[station_id] = Station.from_experiment(
-                name=station_name,
-                id=station_id,
-                experiment=self,
+            stations_dictionary[station_id] = Station(
+                station_name=station_name,
+                station_id=station_id,
+                is_phase_center=False,
+                clock_parameters=self.clock_parameters[station_id],
             )
 
         # Collect observation bands and timestamps
