@@ -13,12 +13,9 @@ class OceanLoading(Displacement):
     Implements the conventional model for displacements due to ocean loading as described in section 7.1.2 of the IERS Conventions 2010.
     """
 
-    requires_spice: bool = False
-    model: str = "tpxo72"
-
     def ensure_resources(self) -> None:
 
-        source = io.internal_file(f"{self.model}.blq")
+        source = io.internal_file("tpxo72.blq")
         if not source.exists():
             log.error(
                 f"Failed to initialize {self.name} displacement: {source} not found"
