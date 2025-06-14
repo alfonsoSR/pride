@@ -304,41 +304,58 @@ class Experiment:
         """
 
         # Load station IDs and names from VEX file
-        stations_dictionary = vex.load_station_ids_and_names(ignored_stations)
+        station_catalog = vex.load_station_ids_and_names(ignored_stations)
 
-        # Initialize dictionary of empty baselines (without observations)
-        log.info("Initializing baselines")
-        baselines_dictionary: dict[str, "Baseline"] = {
-            station_id: Baseline(
-                center=self.phase_center,
-                station=Station.from_experiment(station_name, station_id, self),
+        # Initialize Station objects
+        log.info("Initializing experiment stations")
+        stations_dictionary: dict[str, "Station"] = {}
+        for station_id, station_name in station_catalog.items():
+            stations_dictionary[station_id] = Station.from_experiment(
+                name=station_name,
+                id=station_id,
+                experiment=self,
             )
-            for station_id, station_name in stations_dictionary.items()
-        }
 
         # Collect observation bands and timestamps
-        log.info("Collecting scans from VEX file")
+        log.info("Grouping scan data per observation")
         observation_bands, observation_tstamps = (
             self.collect_observation_bands_and_timestamps(vex)
         )
 
-        # Update baselines with observations
-        log.info("Updating baselines with observations")
-        for baseline_id in observation_bands:
-            for source_id in observation_bands[baseline_id]:
+        # Create baselines
+        log.info("Initializing baselines")
+        experiment_baselines: list["Baseline"] = []
+        for station_id in observation_bands:
+
+            # Initialize container with observations for this station
+            station_observations: list["Observation"] = []
+
+            # Create an Observation object for each observed source
+            for source_id in observation_bands[station_id]:
 
                 # Create observation object
-                _observation = Observation(
-                    baselines_dictionary[baseline_id],
-                    self.sources[source_id],
-                    observation_bands[baseline_id][source_id],
-                    observation_tstamps[baseline_id][source_id],
+                observation = Observation(
+                    station=stations_dictionary[station_id],
+                    source=self.sources[source_id],
+                    band=observation_bands[station_id][source_id],
+                    tstamps=observation_tstamps[station_id][source_id],
                 )
 
-                # Update baseline with observation
-                baselines_dictionary[baseline_id].add_observation(_observation)
+                # Add observation to list of observations for station
+                station_observations.append(observation)
 
-        return list(baselines_dictionary.values())
+            # Create baseline object with observations
+            baseline = Baseline(
+                center=self.phase_center,
+                station=stations_dictionary[station_id],
+                observations=station_observations,
+                eops=self.eops,
+            )
+
+            # Add baseline to list
+            experiment_baselines.append(baseline)
+
+        return experiment_baselines
 
     def load_clock_offsets(self):
         """Load clock offset data from VEX"""

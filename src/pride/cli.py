@@ -36,9 +36,6 @@ def process_experiment() -> None:
 
         for baseline in experiment.baselines:
 
-            # Update baseline with data from observations
-            baseline.update_with_observations(experiment.eops)
-
             # Update station coordinates with geophysical displacements
             baseline.update_station_with_geophysical_displacements(
                 experiment.displacement_models

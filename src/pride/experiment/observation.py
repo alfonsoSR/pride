@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from ..types import Band
     from .baseline import Baseline
     from ..delays import Delay
+    from .station import Station
 
 
 class Observation:
@@ -44,7 +45,7 @@ class Observation:
 
     def __init__(
         self,
-        baseline: "Baseline",
+        station: "Station",
         source: "Source",
         band: "Band",
         tstamps: list[datetime.datetime],
@@ -65,10 +66,9 @@ class Observation:
         self.tstamps = time.Time(
             _tstamps,
             scale="utc",
-            location=baseline.station.tectonic_corrected_location(_tstamps),
+            location=station.tectonic_corrected_location(_tstamps),
         )
-        self.baseline = baseline
-        self.station = baseline.station
+        self.station = station
 
         # Optional properties
         self.obs_freq: "np.ndarray" = NotImplemented
@@ -144,8 +144,8 @@ class Observation:
 
     def __getattribute__(self, name: str) -> Any:
 
-        if name == "exp":
-            log.fatal("Calling experiment attribute of observation")
+        if name == "baseline":
+            log.fatal("Accessing baseline from observation")
 
         val = super().__getattribute__(name)
         if val is NotImplemented:
