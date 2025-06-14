@@ -8,7 +8,8 @@ from .. import astro, utils
 from ..constants import CLIGHT
 
 if TYPE_CHECKING:
-    from ..experiment import Experiment, Observation, Station
+    from ..experiment import Experiment, Observation
+    from ..station import Station
 
 
 class NearFieldSource(Source):
