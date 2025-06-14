@@ -26,8 +26,6 @@ class Ionospheric(Delay):
     - DESCRIPTION OF REQUIRED RESOURCES AND KEYS
     """
 
-    name = "Ionospheric"
-
     def ensure_resources(self) -> None:
 
         log.warning(

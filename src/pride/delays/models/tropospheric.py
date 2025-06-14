@@ -16,8 +16,6 @@ if TYPE_CHECKING:
 class Tropospheric(Delay):
     """Tropospheric correction to light travel time"""
 
-    name = "Tropospheric"
-
     def ensure_resources(self) -> None:
         """Check for site coordinates and site-wise tropospheric data"""
 

@@ -13,10 +13,12 @@ class Displacement(metaclass=ABCMeta):
     Used to correct the position of stations for geophysical phenomena
     """
 
-    name: str = NotImplemented
     requires_spice: bool = NotImplemented
 
     def __init__(self) -> None:
+
+        # Get delay name from the name of the class
+        self.name = type(self).__name__
 
         # self.config: dict[str, Any] = self.exp.setup.displacements[self.name]
         self._resources: dict[str, Any] = {}

@@ -16,10 +16,11 @@ class Delay(metaclass=ABCMeta):
     :param resources: Private container to be used internally when loading resources
     """
 
-    name: str = NotImplemented
-
     def __init__(self, exp: "Experiment") -> None:
         """Initialize delay model from experiment"""
+
+        # Get name from name of the class
+        self.name = type(self).__name__
 
         self.exp = exp
         self.config: dict[str, Any] = self.exp.setup.delays[self.name]

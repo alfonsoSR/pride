@@ -15,8 +15,6 @@ if TYPE_CHECKING:
 class Geometric(Delay):
     """Geometric delay"""
 
-    name = "Geometric"
-
     def ensure_resources(self) -> None:
 
         # NOTE: This has been moved to the constructor of the Experiment class

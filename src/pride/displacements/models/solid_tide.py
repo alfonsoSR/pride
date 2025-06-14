@@ -14,7 +14,6 @@ class SolidTide(Displacement):
     Implements the conventional model for displacements due to solid Earth tides induced by the Sun and the Moon as described in section 7.1.1 of the IERS Conventions 2010.
     """
 
-    name: str = "SolidTide"
     requires_spice: bool = True
 
     def ensure_resources(self) -> None:

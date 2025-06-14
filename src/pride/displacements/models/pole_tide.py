@@ -11,7 +11,6 @@ class PoleTide(Displacement):
     Implements the conventional model for rotational deformation due to pole tide as described in section 7.1.4 of the IERS Conventions 2010.
     """
 
-    name: str = "PoleTide"
     requires_spice: bool = False
 
     def ensure_resources(self) -> None:

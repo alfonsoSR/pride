@@ -13,7 +13,6 @@ class OceanLoading(Displacement):
     Implements the conventional model for displacements due to ocean loading as described in section 7.1.2 of the IERS Conventions 2010.
     """
 
-    name: str = "OceanLoading"
     requires_spice: bool = False
     model: str = "tpxo72"
 

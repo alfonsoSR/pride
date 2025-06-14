@@ -24,8 +24,6 @@ class AntennaDelays(Delay):
     - Antenna information: Focus type, mount type, foundation height and thermal expansion coefficient and reference temperature
     """
 
-    name = "AntennaDelays"
-
     def ensure_resources(self) -> None:
 
         # Initialize date from which to look for atmospheric data
