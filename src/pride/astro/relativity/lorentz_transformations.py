@@ -1,6 +1,6 @@
 import numpy as np
-from ..constants import L_C, CLIGHT, GAMMA_PPN
-from ..logger import log
+from ...constants import L_C, CLIGHT, GAMMA_PPN
+from ...logger import log
 
 
 def transform_position_from_gcrf_to_bcrf(

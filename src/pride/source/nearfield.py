@@ -108,9 +108,9 @@ class NearFieldSource(Source):
             U_earth,
         )
 
-        # Calculate relative position of station wrt to celestial bodies at RX
-        r1b = xsta_bcrf_rx[None, :, :] - xbodies_bcrf_rx
-        r1b_mag = np.linalg.norm(r1b, axis=-1)  # (M, N)
+        # # Calculate relative position of station wrt to celestial bodies at RX
+        # r1b = xsta_bcrf_rx[None, :, :] - xbodies_bcrf_rx
+        # r1b_mag = np.linalg.norm(r1b, axis=-1)  # (M, N)
 
         # Initialize light travel time between source and station
         lt_0 = np.linalg.norm(xsta_bcrf_rx - xsrc_bcrf_rx, axis=-1) / CLIGHT
@@ -155,20 +155,31 @@ class NearFieldSource(Source):
             )
 
             # Calculate relativistic correction
+            # r01 = xsta_bcrf_rx - xsrc_bcrf_tx  # (N, 3)
+            # r01_mag = np.linalg.norm(r01, axis=-1)  # (N,)
+            # r0b = xsrc_bcrf_tx[None, :, :] - xbodies_bcrf_tx  # (M, N, 3)
+            # r0b_mag = np.linalg.norm(r0b, axis=-1)  # (M, N)
+            # r01b_mag = np.linalg.norm(r1b - r0b, axis=-1)  # (M, N)
+            # gmc = 2.0 * bodies_gm[:, None] / (CLIGHT * CLIGHT)  # (M, 1)
+            # rlt_01 = np.sum(
+            #     (gmc / CLIGHT)
+            #     * np.log(
+            #         (r0b_mag + r1b_mag + r01b_mag + gmc)
+            #         / (r0b_mag + r1b_mag - r01b_mag + gmc)
+            #     ),
+            #     axis=0,
+            # )
+            rlt_01 = astro.post_newtonian_near_field_effect(
+                bodies_gm,
+                xsta_bcrf_rx,
+                xsrc_bcrf_tx,
+                xbodies_bcrf_rx,
+                xbodies_bcrf_tx,
+            )
+
+            # Calculate relative position of station and source (non-aberrated)
             r01 = xsta_bcrf_rx - xsrc_bcrf_tx  # (N, 3)
             r01_mag = np.linalg.norm(r01, axis=-1)  # (N,)
-            r0b = xsrc_bcrf_tx[None, :, :] - xbodies_bcrf_tx  # (M, N, 3)
-            r0b_mag = np.linalg.norm(r0b, axis=-1)  # (M, N)
-            r01b_mag = np.linalg.norm(r1b - r0b, axis=-1)  # (M, N)
-            gmc = 2.0 * bodies_gm[:, None] / (CLIGHT * CLIGHT)  # (M, 1)
-            rlt_01 = np.sum(
-                (gmc / CLIGHT)
-                * np.log(
-                    (r0b_mag + r1b_mag + r01b_mag + gmc)
-                    / (r0b_mag + r1b_mag - r01b_mag + gmc)
-                ),
-                axis=0,
-            )
 
             # Evaluate function and derivative for Newton-Raphson
             f = lt_i - (r01_mag / CLIGHT) - rlt_01

@@ -124,20 +124,31 @@ class Geometric(Delay):
             )
 
             # Calculate relativistic correction
+            # r02 = xphc_bcrf_rx - xsrc_bcrf_tx  # (N, 3)
+            # r02_mag = np.linalg.norm(r02, axis=-1)  # (N,)
+            # r2b = xphc_bcrf_rx[None, :, :] - xbodies_bcrf_rx  # (M, N, 3)
+            # r2b_mag = np.linalg.norm(r2b, axis=-1)  # (M, N)
+            # r02b_mag = np.linalg.norm(r2b - r0b, axis=-1)  # (M, N)
+            # gmc = 2.0 * bodies_gm[:, None] / clight2  # (M, 1)
+            # rlt_02 = np.sum(
+            #     (gmc / CLIGHT)
+            #     * np.log(
+            #         (r0b_mag + r2b_mag + r02b_mag + gmc)
+            #         / (r0b_mag + r2b_mag - r02b_mag + gmc)
+            #     ),
+            #     axis=0,
+            # )
+            rlt_02 = astro.post_newtonian_near_field_effect(
+                bodies_gm,
+                xphc_bcrf_rx,
+                xsrc_bcrf_tx,
+                xbodies_bcrf_rx,
+                xbodies_bcrf_tx,
+            )
+
+            # Calculate relative position of phase center and source (non-aberrated)
             r02 = xphc_bcrf_rx - xsrc_bcrf_tx  # (N, 3)
             r02_mag = np.linalg.norm(r02, axis=-1)  # (N,)
-            r2b = xphc_bcrf_rx[None, :, :] - xbodies_bcrf_rx  # (M, N, 3)
-            r2b_mag = np.linalg.norm(r2b, axis=-1)  # (M, N)
-            r02b_mag = np.linalg.norm(r2b - r0b, axis=-1)  # (M, N)
-            gmc = 2.0 * bodies_gm[:, None] / clight2  # (M, 1)
-            rlt_02 = np.sum(
-                (gmc / CLIGHT)
-                * np.log(
-                    (r0b_mag + r2b_mag + r02b_mag + gmc)
-                    / (r0b_mag + r2b_mag - r02b_mag + gmc)
-                ),
-                axis=0,
-            )
 
             # Evaluate function and derivative
             f = lt_n - (r02_mag / CLIGHT) - rlt_02
@@ -198,6 +209,7 @@ class Geometric(Delay):
         r2b = xphc_bcrf_rx2[None, :, :] - xbodies_bcrf_rx2  # (M, N, 3)
         r2b_mag = np.linalg.norm(r2b, axis=-1)
         gmc = 2.0 * bodies_gm[:, None] / clight2  # (M, 1)
+
         tg_12 = np.sum(
             (gmc / CLIGHT)
             * np.log(
