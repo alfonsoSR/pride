@@ -3,10 +3,9 @@ from astropy.utils import iers
 from astropy import time, units
 from typing import Literal, TYPE_CHECKING
 from ..logger import log
-from scipy import interpolate
 from ..external.iers import interp
 import erfa
-from .. import utils
+from .. import utils, math
 
 if TYPE_CHECKING:
     from ..experiment.experiment import Experiment
@@ -65,23 +64,23 @@ class EOP:
 
         # EOPs at integer epochs
         self.__eops_dict = {
-            "xp": interpolate.interp1d(
+            "xp": math.Default1DInterpolator(
                 relevant_mjds,
                 eop_table["PM_x"][eop_table_mask].value,  # type: ignore
             ),
-            "yp": interpolate.interp1d(
+            "yp": math.Default1DInterpolator(
                 relevant_mjds,
                 eop_table["PM_y"][eop_table_mask].value,  # type: ignore
             ),
-            "ut1_utc": interpolate.interp1d(
+            "ut1_utc": math.Default1DInterpolator(
                 relevant_mjds,
                 eop_table["UT1_UTC"][eop_table_mask].value,  # type: ignore
             ),
-            "dx": interpolate.interp1d(
+            "dx": math.Default1DInterpolator(
                 relevant_mjds,
                 eop_table["dX_2000A"][eop_table_mask].value,  # type: ignore
             ),
-            "dy": interpolate.interp1d(
+            "dy": math.Default1DInterpolator(
                 relevant_mjds,
                 eop_table["dY_2000A"][eop_table_mask].value,  # type: ignore
             ),
