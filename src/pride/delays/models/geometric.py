@@ -138,6 +138,7 @@ class Geometric(Delay):
             #     ),
             #     axis=0,
             # )
+
             rlt_02 = astro.post_newtonian_near_field_effect(
                 bodies_gm,
                 xphc_bcrf_rx,
@@ -177,11 +178,16 @@ class Geometric(Delay):
         xearth_bcrf_rx1 = searth_bcrf_rx1[:, :3]
         vearth_bcrf_rx1 = searth_bcrf_rx1[:, 3:]
         xsun_bcrf_rx1 = astro.get_icrf_position_vector("sun", et_rx1)
-        U_earth = astro.get_body_gravitational_parameter(
-            "sun"
-        ) / np.linalg.norm(xsun_bcrf_rx1 - xearth_bcrf_rx1, axis=-1)
+
+        # Calculate gravitational potential due to Sun at geocenter
+        mu_sun = astro.get_body_gravitational_parameter("sun")
+        r_earth_sun_rx1 = np.linalg.norm(
+            xearth_bcrf_rx1 - xsun_bcrf_rx1, axis=-1
+        )
+        U_geocenter = mu_sun / r_earth_sun_rx1
+
         xsta_bcrf_rx1 = astro.transform_position_from_gcrf_to_bcrf(
-            xsta_gcrf_rx1, xearth_bcrf_rx1, vearth_bcrf_rx1, U_earth
+            xsta_gcrf_rx1, xearth_bcrf_rx1, vearth_bcrf_rx1, U_geocenter
         )
 
         # Calculate BCRF position of phase center at RX2
@@ -231,7 +237,7 @@ class Geometric(Delay):
         v2 = 0.0 * vearth_bcrf_rx1  # Velocity of phase center in GCRF
         return -(
             (dt + tg_12)
-            * (1 - (0.5 * vearth_mag * vearth_mag + U_earth) / clight2)
+            * (1 - (0.5 * vearth_mag * vearth_mag + U_geocenter) / clight2)
             / (1.0 - L_C)
             - np.sum(vearth_bcrf_rx1 * baseline, axis=-1) / clight2
         ) / (1.0 + np.sum(vearth_bcrf_rx1 * v2, axis=-1) / clight2)

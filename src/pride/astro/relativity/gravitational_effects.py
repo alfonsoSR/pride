@@ -8,17 +8,25 @@ def post_newtonian_near_field_effect(
     x_src_bcrf_tx: np.ndarray,
     x_bodies_bcrf_rx: np.ndarray,
     x_bodies_bcrf_tx: np.ndarray,
-) -> None:
+    consider_bending: bool = True,
+) -> np.ndarray:
     """Post-Newtonian gravitational effect due to moving solar system bodies
 
-    source: duev 2012
+    This function calculates a relativistic perturbation for the light-time equation of a signal travelling from a near-field source and an observer. The perturbation accounts for the reduction in the coordinate velocity of the signal, and the bending of the light path due to gravitational interactions with the massive bodies in the solar system.
 
-    :param bodies_gm: Standard gravitational parameter of all the massive bodies to be considered. Array of shape (M,), with M the number of bodies.
-    :param x_obs_bcrf_rx: BCRF position vector of the observer at RX epochs. Array of shape (N, 3), with N the number of epochs.
-    :param x_src_bcrf_tx: BCRF position vector of the source at TX epochs. Array of shape (N, 3), with N the number of epochs.
-    :param x_bodies_bcrf_rx: BCRF position vectors of the solar system bodies at RX epochs. Array of shape (M, N, 3), with M the number of bodies and N the number of epochs.
-    :param x_bodies_bcrf_tx: BCRF position vectors of the solar system bodies at TX epochs. Array of shape (M, N, 3), with M the number of bodies and N the number of epochs.
-    :return: Post-Newtonian effect on light travel time between source and observer. Array of shape (N,), with N the number of epochs.
+    The algorithm is described in section 8 of Moyer (2003), and its original implementation only considers the bending effect of the Sun. Later in that section, the author indicates that ignoring the bending effect of the other massive bodies is a simplification. Since the computation of the bending effect is trivial, and considering it just for the Sun would increase the complexity of the function, this implementation takes it into account for all the massive bodies. The user can disable this effect using the `consider_bending` argument.
+
+    In the description of the arguments, M is the number of massive bodies, N is the number of epochs, and the tuples at the end of the argument names indicate the expected shape of the arrays.
+
+    Source: Moyer, Theodore D. (2003). Formulation for Observed and Computed Values of Deep Space Network Data Types for Navigation.
+
+    :param bodies_gm: Array with GM of all the massive bodies to be considered (M,).
+    :param x_obs_bcrf_rx: BCRF position of the observer at RX epochs (N, 3).
+    :param x_src_bcrf_tx: BCRF position of the source at TX epochs (N, 3).
+    :param x_bodies_bcrf_rx: BCRF position of the massive bodies at RX epochs (M, N, 3).
+    :param x_bodies_bcrf_tx: BCRF position of the massive bodies at TX epochs (M, N, 3).
+    :param consider_bending: Whether to consider the bending of the light path.
+    :return: Post-Newtonian effect on the light travel time between source and observer (N,).
     """
 
     # Relative position of source and bodies at TX
@@ -44,11 +52,11 @@ def post_newtonian_near_field_effect(
     gmc = 2.0 * bodies_gm[:, None] / (CLIGHT * CLIGHT)  # (M, 1)
 
     # Post-Newtonian effect
-    dt_pn = np.sum(
+    dt_pn: np.ndarray = np.sum(
         (gmc / CLIGHT)
         * np.log(
-            (r0b_mag + r1b_mag + r01b_mag + gmc)
-            / (r0b_mag + r1b_mag - r01b_mag + gmc)
+            (r0b_mag + r1b_mag + r01b_mag + gmc * consider_bending)
+            / (r0b_mag + r1b_mag - r01b_mag + gmc * consider_bending)
         ),
         axis=0,
     )  # (N,)

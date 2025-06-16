@@ -108,10 +108,6 @@ class NearFieldSource(Source):
             U_earth,
         )
 
-        # # Calculate relative position of station wrt to celestial bodies at RX
-        # r1b = xsta_bcrf_rx[None, :, :] - xbodies_bcrf_rx
-        # r1b_mag = np.linalg.norm(r1b, axis=-1)  # (M, N)
-
         # Initialize light travel time between source and station
         lt_0 = np.linalg.norm(xsta_bcrf_rx - xsrc_bcrf_rx, axis=-1) / CLIGHT
         tx_0: time.Time = rx.tdb - time.TimeDelta(
@@ -155,20 +151,6 @@ class NearFieldSource(Source):
             )
 
             # Calculate relativistic correction
-            # r01 = xsta_bcrf_rx - xsrc_bcrf_tx  # (N, 3)
-            # r01_mag = np.linalg.norm(r01, axis=-1)  # (N,)
-            # r0b = xsrc_bcrf_tx[None, :, :] - xbodies_bcrf_tx  # (M, N, 3)
-            # r0b_mag = np.linalg.norm(r0b, axis=-1)  # (M, N)
-            # r01b_mag = np.linalg.norm(r1b - r0b, axis=-1)  # (M, N)
-            # gmc = 2.0 * bodies_gm[:, None] / (CLIGHT * CLIGHT)  # (M, 1)
-            # rlt_01 = np.sum(
-            #     (gmc / CLIGHT)
-            #     * np.log(
-            #         (r0b_mag + r1b_mag + r01b_mag + gmc)
-            #         / (r0b_mag + r1b_mag - r01b_mag + gmc)
-            #     ),
-            #     axis=0,
-            # )
             rlt_01 = astro.post_newtonian_near_field_effect(
                 bodies_gm,
                 xsta_bcrf_rx,
@@ -192,14 +174,6 @@ class NearFieldSource(Source):
             # Update light travel time and TX
             lt_0 = lt_i + f / dfdtx
             tx_0 = rx.tdb - time.TimeDelta(lt_0, format="sec", scale="tdb")
-
-            # # Update light travel time and TX
-            # dot_p01_c = (
-            #     np.sum((r01 / r01_mag[:, None]) * vsrc_bcrf_tx, axis=-1)
-            #     / clight
-            # )  # (N,)
-            # lt_0 -= (lt_0 - (r01_mag / clight) - rlt_01) / (1.0 - dot_p01_c)
-            # tx_0 = rx.tdb - time.TimeDelta(lt_0, format="sec")  # type: ignore
 
             # Update iteration counter
             n_i += 1
