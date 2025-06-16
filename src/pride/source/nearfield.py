@@ -30,8 +30,11 @@ class NearFieldSource(Source):
         source.spice_id = exp.target["short_name"]
 
         # Load ramping data for three-way link
-        path_base: str = exp.setup.catalogues["frequency_ramping"]
-        _3way_source = io.internal_file(f"{path_base}3w.{source.spice_id}")
+        _3way_source = io.get_path_to_ramping_data_file(
+            source.name, "three-way"
+        )
+        # path_base: str = exp.setup.catalogues["frequency_ramping"]
+        # _3way_source = io.internal_file(f"{path_base}3w.{source.spice_id}")
         _3way_data = io.load_ramping_data(
             _3way_source, "three-way", (exp.initial_epoch, exp.final_epoch)
         )
@@ -42,7 +45,8 @@ class NearFieldSource(Source):
             log.warning(f"Three-way ramping data not found for {source.name}")
 
         # Load ramping data for one-way link
-        _1way_source = io.internal_file(f"{path_base}1w.{source.spice_id}")
+        _1way_source = io.get_path_to_ramping_data_file(source.name, "one-way")
+        # _1way_source = io.internal_file(f"{path_base}1w.{source.spice_id}")
         _1way_data = io.load_ramping_data(
             _1way_source, "one-way", (exp.initial_epoch, exp.final_epoch)
         )
@@ -75,9 +79,7 @@ class NearFieldSource(Source):
         xsrc_bcrf_rx = astro.get_icrf_position_vector(self.spice_id, et_rx)
 
         # Get list of bodies to consider for relativistic correction
-        _bodies = io.load_catalog("config.yaml")["Configuration"][
-            "lt_correction_bodies"
-        ]
+        _bodies = io.internal_parameter("lt_correction_bodies")
         external_bodies = [body for body in _bodies if body.lower() != "earth"]
         bodies = external_bodies + ["earth"]
 
@@ -126,12 +128,14 @@ class NearFieldSource(Source):
         # Initialize variables for iterative estimation of TX
         lt_i = 0.0 * lt_0
         n_i = 0
-        precision = float(
-            io.load_catalog("config.yaml")["Configuration"]["lt_precision"]
-        )
-        n_max = io.load_catalog("config.yaml")["Configuration"][
-            "lt_max_iterations"
-        ]
+        precision = float(io.internal_parameter("lt_precision"))
+        n_max = int(io.internal_parameter("lt_max_iterations"))
+        # precision = float(
+        #     io.load_catalog("config.yaml")["Configuration"]["lt_precision"]
+        # )
+        # n_max = io.load_catalog("config.yaml")["Configuration"][
+        #     "lt_max_iterations"
+        # ]
         # precision = float(self.exp.setup.internal["lt_precision"])
         # n_max = self.exp.setup.internal["lt_max_iterations"]
 

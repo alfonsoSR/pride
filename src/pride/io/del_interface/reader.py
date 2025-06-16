@@ -1,11 +1,8 @@
-import struct
 from pathlib import Path
 import numpy as np
 from ...logger import log
 import sys
-from dataclasses import dataclass
 from .data_structures import DelContents, ScanData
-from typing import Any
 from ... import utils
 
 

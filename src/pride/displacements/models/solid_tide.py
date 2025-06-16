@@ -2,8 +2,6 @@ from ..core import Displacement
 from typing import Any
 import numpy as np
 from astropy import time
-import spiceypy as spice
-from ...constants import J2000
 from ...external.iers import dehanttideinel
 from ... import astro, utils
 

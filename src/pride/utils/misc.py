@@ -16,7 +16,6 @@ with resources.path("pride.data", "config.yaml") as config_path:
 
     __config = yaml.safe_load(config_path.open())
     INTERNAL_CATALOGS: dict[str, str] = __config["Catalogues"]
-    INTERNAL_CONFIGURATION: dict[str, Any] = __config["Configuration"]
     ALTERNATIVE_STATION_NAMES: dict[str, list[str]] = yaml.safe_load(
         (
             config_path.parent / INTERNAL_CATALOGS["alternative_station_names"]
@@ -78,28 +77,22 @@ def discretize_scan(
 
     # Calculate the scan duration and a tentative step size
     scan_duration: int = final_offset - initial_offset
-    min_extra_points: int = INTERNAL_CONFIGURATION["min_obs_per_scan"] - 1
+    min_extra_points: int = int(io.internal_parameter("min_obs_per_scan")) - 1
     tentative_step: float = scan_duration / min_extra_points
 
     # Calculate number of extra points based on internal constraints
     # Number of observation is number of extra points + 1 (beginning)
-    if tentative_step > INTERNAL_CONFIGURATION["default_scan_step"]:
+    default_scan_step: float = float(io.internal_parameter("default_scan_step"))
+    min_scan_step: float = float(io.internal_parameter("min_scan_step"))
+    if tentative_step > default_scan_step:
 
-        number_of_extra_points = math.ceil(
-            scan_duration / INTERNAL_CONFIGURATION["default_scan_step"]
-        )
+        number_of_extra_points = math.ceil(scan_duration / default_scan_step)
 
-    elif (
-        INTERNAL_CONFIGURATION["min_scan_step"]
-        <= tentative_step
-        <= INTERNAL_CONFIGURATION["default_scan_step"]
-    ):
+    elif min_scan_step <= tentative_step <= default_scan_step:
         number_of_extra_points = math.ceil(scan_duration / tentative_step)
 
     else:
-        number_of_extra_points = math.floor(
-            scan_duration / INTERNAL_CONFIGURATION["min_scan_step"]
-        )
+        number_of_extra_points = math.floor(scan_duration / min_scan_step)
         log.warning(f"Using minimum allowed step size for {scan_id}")
 
     # Recalculate the step size with correct number of extra points

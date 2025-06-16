@@ -15,7 +15,7 @@ class OceanLoading(Displacement):
 
     def ensure_resources(self) -> None:
 
-        source = io.internal_file("tpxo72.blq")
+        source = io.internal_catalog_path("ocean_loading")
         if not source.exists():
             log.error(
                 f"Failed to initialize {self.name} displacement: {source} not found"

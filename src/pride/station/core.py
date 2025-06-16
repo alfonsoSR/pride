@@ -50,7 +50,7 @@ class Station:
 
         # Initialize list of possible names
         self.possible_names = [station_name]
-        alternative_names = io.load_catalog("station_names.yaml")
+        alternative_names = io.load_catalog("alternative_station_names")
         if station_name in alternative_names:
             self.possible_names += alternative_names[station_name]
 

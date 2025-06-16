@@ -207,7 +207,7 @@ class Vex:
         }
 
         # Load internal catalog with alternative station names
-        alternative_names_catalog = load_catalog("station_names.yaml")
+        alternative_names_catalog = load_catalog("alternative_station_names")
 
         # Normalize station names
         for station_id, default_name in stations_dictionary.copy().items():

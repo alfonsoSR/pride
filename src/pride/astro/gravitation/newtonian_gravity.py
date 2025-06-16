@@ -1,5 +1,4 @@
 import numpy as np
-from .. import ephemerides as ephem
 
 
 def calculate_newtonian_potential(

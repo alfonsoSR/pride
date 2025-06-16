@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from ...experiment.observation import Observation
 
 
-TURNAROUND_RATIO = io.load_catalog("config.yaml")["Configuration"]["tr_ratio"]
+TURNAROUND_RATIO = io.internal_parameter("tr_ratio")
 
 
 class Ionospheric(Delay):

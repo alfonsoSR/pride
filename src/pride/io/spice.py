@@ -16,7 +16,7 @@ def get_target_information(name: str) -> dict[str, Any]:
     """
 
     name = name.upper()
-    catalog = load_catalog("spacecraft.yaml")
+    catalog = load_catalog("mission_metadata")
     out: dict[str, Any] | None = None
 
     for target in catalog.values():

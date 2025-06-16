@@ -59,7 +59,7 @@ def test_scan_discretization(
     reference_epoch = datetime.datetime(2000, 6, 28, 13, 12, 0)
 
     # Internal configuration
-    internal_setup = io.load_catalog("config.yaml")["Configuration"]
+    # internal_setup = io.load_catalog("config.yaml")["Configuration"]
 
     # Discretize scan
     if fails:
@@ -77,7 +77,7 @@ def test_scan_discretization(
 
     # Ensure that step is valid, expected, and all steps are equal
     assert np.all(np.isclose(actual_steps, reference_step, atol=TOL))
-    assert reference_step >= internal_setup["min_scan_step"]
+    assert reference_step >= io.internal_parameter("min_scan_step")
     assert np.isclose(reference_step, expected_step, atol=TOL)
 
     # Ensure that initial and final offsets are respected
@@ -87,7 +87,7 @@ def test_scan_discretization(
     # Ensure that the internal configuration is respected
     assert len(tstamps) == expected_length
     if respects_min_obs:
-        assert nobs >= internal_setup["min_obs_per_scan"]
+        assert nobs >= io.internal_parameter("min_obs_per_scan")
 
     return None
 
