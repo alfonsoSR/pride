@@ -74,30 +74,39 @@ class NearFieldSource(Source):
         et_rx = utils.get_ephemeris_time_from_epoch(rx)
         xsrc_bcrf_rx = astro.get_icrf_position_vector(self.spice_id, et_rx)
 
-        # Calculate GM and BCRS position of celestial bodies at RX
-        bodies = io.load_catalog("config.yaml")["Configuration"][
+        # Get list of bodies to consider for relativistic correction
+        _bodies = io.load_catalog("config.yaml")["Configuration"][
             "lt_correction_bodies"
         ]
-        bodies_gm = np.array(
-            [astro.get_body_gravitational_parameter(body) for body in bodies]
-        )
-        xbodies_bcrf_rx = np.array(
-            [astro.get_icrf_position_vector(body, et_rx) for body in bodies]
-        )
+        external_bodies = [body for body in _bodies if body.lower() != "earth"]
+        bodies = external_bodies + ["earth"]
 
-        # Calculate Newtonian potential of all solar system bodies at geocenter
-        _earth_idx = bodies.index("earth")
-        searth_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
-        xearth_bcrf_rx = searth_bcrf_rx[:, :3]
-        vearth_bcrf_rx = searth_bcrf_rx[:, 3:]
-        xbodies_gcrf_rx = np.delete(
-            xbodies_bcrf_rx - xearth_bcrf_rx, _earth_idx, axis=0
-        )
-        bodies_gm_noearth = np.delete(bodies_gm, _earth_idx, axis=0)
-        U_earth = np.sum(
-            bodies_gm_noearth[:, None]
-            / np.linalg.norm(xbodies_gcrf_rx, axis=-1),
-            axis=0,
+        # Initialize arrays for GM and BCRF position of massive bodies
+        xbodies_bcrf_rx = np.zeros((len(bodies), len(et_rx), 3))
+        bodies_gm = np.zeros(len(bodies))
+        x_external_bodies_bcrf_rx = np.zeros((len(bodies) - 1, len(et_rx), 3))
+        external_bodies_gm = np.zeros(len(bodies) - 1)
+
+        # Get GM and BCRF position of all external bodies at RX
+        for idx, body in enumerate(external_bodies):
+
+            bodies_gm[idx] = astro.get_body_gravitational_parameter(body)
+            xbodies_bcrf_rx[idx] = astro.get_icrf_position_vector(body, et_rx)
+            external_bodies_gm[idx] = bodies_gm[idx]
+            x_external_bodies_bcrf_rx[idx] = xbodies_bcrf_rx[idx]
+
+        # Add Earth to the arrays including all bodies and get its BCRF velocity
+        bodies_gm[-1] = astro.get_body_gravitational_parameter("earth")
+        __s_earth_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
+        xearth_bcrf_rx = __s_earth_bcrf_rx[:, :3]
+        vearth_bcrf_rx = __s_earth_bcrf_rx[:, 3:]
+        xbodies_bcrf_rx[-1] = xearth_bcrf_rx
+
+        # Calculate Newtonian potential of external bodies at geocenter
+        U_earth = astro.calculate_newtonian_potential_from_bcrf_positions(
+            massive_bodies_gm=external_bodies_gm,
+            x_target_bcrf=xearth_bcrf_rx,
+            x_bodies_bcrf=x_external_bodies_bcrf_rx,
         )
 
         # Calculate BCRS position of station at RX
