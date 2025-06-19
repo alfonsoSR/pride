@@ -1,11 +1,12 @@
 from ..core import Delay
-from ... import io, utils
+from ... import io, utils, math
 from typing import TYPE_CHECKING, Any
 from ...logger import log
 from astropy import time
 import numpy as np
 from ...constants import CLIGHT
 from scipy import interpolate
+from nastro import graphics as ng
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -88,9 +89,14 @@ class AntennaDelays(Delay):
             # Generate interpolators for atmospheric data
             interp_type = "linear" if len(mjd) <= 3 else "cubic"
             atmospheric_interpolators = {
-                "p": interpolate.interp1d(mjd, pressure, kind=interp_type),
-                "TC": interpolate.interp1d(mjd, temperature, kind=interp_type),
-                "hum": interpolate.interp1d(mjd, humidity, kind=interp_type),
+                "p": math.Default1DInterpolator(mjd, pressure),
+                "TC": math.Default1DInterpolator(mjd, temperature),
+                "hum": math.Default1DInterpolator(mjd, humidity),
+                "p1d": interpolate.interp1d(mjd, pressure, kind=interp_type),
+                "TC1d": interpolate.interp1d(
+                    mjd, temperature, kind=interp_type
+                ),
+                "hum1d": interpolate.interp1d(mjd, humidity, kind=interp_type),
             }
 
             # Add station to resources
@@ -165,6 +171,12 @@ class AntennaDelays(Delay):
         p_hpa = p * 760.0 / 1013.25
         temp_k = thermo["TC"](obs.tstamps.mjd) + 273.16
         hum = thermo["hum"](obs.tstamps.mjd) / 100.0
+
+        with ng.SingleAxis() as fig:
+
+            mjd = obs.tstamps.mjd
+            fig.line(mjd, p - thermo["p1d"](mjd), label="pressure")
+            fig.line(mjd, thermo["TC"](mjd) - thermo["TC1d"](mjd), label="T")
 
         # Aberrated pointing vector corrected for atmospheric refraction
         rho = self.atmospheric_bending_angle(obs.source_el, temp_k, hum, p_hpa)
