@@ -59,3 +59,8 @@ Delays:
       data: "data/tropospheric" # We obtain info from site-specific V3GR
       # Fallback to default configuration if no site-specific data is available
       fallback: true
+
+Doppler:
+  Dop:
+    # Calculate Doppler
+    calculate: true

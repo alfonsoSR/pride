@@ -12,8 +12,7 @@ class ScanData:
     :param mjd2: Array with fractional part of MJDs in seconds
     :u, v, w: Arrays of u, v, w projections [UNITS?]
     :param delays: Array of delays [s]
-    :param doppler_phase: Array of Doppler phase values [UNITS?]
-    :param doppler_amp: Array of Doppler amplitude values [UNITS?]
+    :param doppler: Array of Doppler frequency values [Hz]
     """
 
     id: str
@@ -24,8 +23,7 @@ class ScanData:
     v: np.ndarray
     w: np.ndarray
     delays: np.ndarray
-    doppler_phase: np.ndarray
-    doppler_amp: np.ndarray
+    doppler: np.ndarray
 
 
 @dataclass

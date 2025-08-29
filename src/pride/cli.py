@@ -113,6 +113,9 @@ def process_experiment() -> None:
                 # Calculate delays for the observation
                 observation.calculate_delays(experiment.delay_models)
 
+                # Calculate Doppler for the observation
+                observation.calculate_doppler(experiment.doppler_models)
+
     experiment.save_output()
 
     return None

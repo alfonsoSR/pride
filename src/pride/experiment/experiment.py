@@ -10,6 +10,7 @@ from ..types import Band
 from ..coordinates import EOP
 from ..displacements import DISPLACEMENT_MODELS
 from ..delays import DELAY_MODELS
+from ..doppler import DOPPLER_MODELS
 from ..source import Source, NearFieldSource, FarFieldSource
 from ..station.core import Station
 from .baseline import Baseline
@@ -21,6 +22,7 @@ from ..io.vex.interface import VEX_DATE_FORMAT
 if TYPE_CHECKING:
     from ..displacements.core import Displacement
     from ..delays.core import Delay
+    from ..doppler.core import Doppler
 
 
 class Experiment:
@@ -92,6 +94,7 @@ class Experiment:
         self.requires_spice = True
         self.displacement_models = self.initialize_displacement_models()
         self.delay_models = self.initialize_delay_models()
+        self.doppler_models = self.initialize_doppler_models()
 
         log.info(f"Experiment {self.name} successfully initialized")
 
@@ -206,6 +209,30 @@ class Experiment:
         log.info("Delay models successfully initialized")
 
         return _delay_models
+    
+    def initialize_doppler_models(self) -> list["Doppler"]:
+        """Initialize Doppler models
+
+        Iterates over the 'Doppler' section of the configuration file and, for each value with 'calculate' set to 'true', it looks for an equally named class in the 'DOPPLER_MODELS' dictionary. If the class is not found, an error is raised indicating that a requested Doppler is not available, otherwise, the Doppler is initialized with the experiment. Initialization involves calling the 'ensure_resources' and 'load_resources' methods of the Doppler object.
+
+        :return: List of Doppler objects equiped with resources
+        """
+
+        log.info("Initializing Doppler models")
+
+        _doppler_models: list["Doppler"] = []
+        for doppler_id, doppler_config in self.setup.delays.items():
+            if doppler_config["calculate"]:
+                if doppler_id not in DOPPLER_MODELS:
+                    log.error(
+                        f"Failed to initialize {doppler_id} delay: Model not found"
+                    )
+                    exit(1)
+                _doppler_models.append(DOPPLER_MODELS[doppler_id](self))
+
+        log.info("Doppler models successfully initialized")
+
+        return _doppler_models
 
     def collect_observation_bands_and_timestamps(self, vex: "io.Vex") -> tuple[
         dict[str, dict[str, "Band"]],
@@ -466,6 +493,7 @@ class Experiment:
                 )
                 scan_tstamps = observation.tstamps[scan_mask]
                 scan_delays = observation.delays[scan_mask]
+                scan_doppler = observation.doppler[scan_mask]
 
                 # Get integral part of MJD
                 _mjd = np.array(scan_tstamps.mjd, dtype=int)  # type: ignore
@@ -478,11 +506,10 @@ class Experiment:
 
                 # Write data to output file
                 # NOTE: Current version of the program does not include
-                # Doppler shifts or UVW projections. These entries are set
-                # to zero (to 1 for the amplitude of the Doppler shift)
+                # UVW projections. These entries are set to zero.
                 zero = np.zeros_like(mjd2)
                 data = np.array(
-                    [mjd2, zero, zero, zero, scan_delays, zero, zero + 1.0]
+                    [mjd2, zero, zero, zero, scan_delays, scan_doppler]
                 ).T
                 output_files[station_id].add_scan(
                     scan_id, scan_source_id, mjd1, data

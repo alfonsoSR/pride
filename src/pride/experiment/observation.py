@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from ..types import Band
     from .baseline import Baseline
     from ..delays import Delay
+    from ..doppler import Doppler
     from ..station.core import Station
 
 
@@ -83,6 +84,9 @@ class Observation:
         self.delays: "np.ndarray" = NotImplemented
         self.delay_dict: "dict" = NotImplemented
         self.has_delays: bool = False
+        self.doppler: "np.ndarray" = NotImplemented
+        self.doppler_dict: "dict" = NotImplemented
+        self.has_doppler: bool = False
 
         return None
 
@@ -173,5 +177,32 @@ class Observation:
             delay += val
         self.delays = delay
         self.has_delays = True
+
+        return None
+
+    def calculate_doppler(self, doppler_models: list["Doppler"]) -> None:
+
+        if self.has_doppler:
+            log.error(
+                "Attempted to calculate Doppler twice for observation of"
+                f" {self.source.name} from {self.station.name}"
+            )
+            exit(1)
+        if not self.has_delays:
+            log.error(
+                "Attempted to calculate Doppler without first calculating delays of"
+                f" {self.source.name} from {self.station.name}"
+            )
+            exit(1)
+        
+        doppler: np.ndarray = np.zeros_like(self.tstamps.jd)
+        self.doppler_dict = {}
+        for doppler_model in doppler_models:
+            val = doppler_model.calculate_with_logging(self)
+            self.doppler_dict[doppler_model.name] = val
+            doppler += val
+        
+        self.doppler = doppler
+        self.has_doppler = True
 
         return None
