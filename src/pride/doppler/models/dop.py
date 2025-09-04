@@ -61,19 +61,19 @@ class Dop(Doppler):
         fonafe = np.ones_like(obs.tstamps.jd)
 
         return fonafe
-
+    
+    """
     def doppler_bc(
         tjd, t_1, dd, state_ss_t1, tdb, bcrs, GM,
         TDB_TCB, L_C, C, x_way, freq_type, ut1, sta1,
         sta2=None, L_G=None, AE=None, J_2=None, utc=None,
         gcrs=None, t_utc=None, eops=None, inp=None):
-        """
-        Doppler calculation following Moyer/Duev
-        For reference see Duev PhD thesis, MSU 2012.
 
-        dd - number of days since the start epoch of the ephemeris * 86400
-        state_ss_t1  - Solar system bodies r, v (and a for Earth) at t_1 wrt SSBC
-        """
+        # Doppler calculation following Moyer/Duev
+        # For reference see Duev PhD thesis, MSU 2012.
+
+        # dd - number of days since the start epoch of the ephemeris * 86400
+        # state_ss_t1  - Solar system bodies r, v (and a for Earth) at t_1 wrt SSBC
 
         r_1 = sta1.r_GCRS
         v_1 = sta1.v_GCRS
@@ -95,9 +95,9 @@ class Dop(Doppler):
         V_1 = earth[:, 1] + ((1.0 - U / (C**2) - L_C) * v_1 - dot(earth[:, 1], v_1) * earth[:, 1] / (2.0 * C**2)) * (
             1.0 - (U + v_1**2 / 2.0 - L_C) / C**2)
 
-        """ calculate downleg light-time from S/C to Receiver
-            to find signal transmission t_0 time given the reception time t_1
-        """
+        # calculate downleg light-time from S/C to Receiver
+        # to find signal transmission t_0 time given the reception time t_1
+        
         precision = 1e-16
         n_max = 3
         lag_order = 9
@@ -158,7 +158,7 @@ class Dop(Doppler):
         R_0 = np.hstack((x, y, z))
         V_0 = np.hstack((vx, vy, vz))
 
-        """ BCRS state vectors of celestial bodies at t_0, [m, m/s]: """
+        # BCRS state vectors of celestial bodies at t_0, [m, m/s]:
         ## Earth:
         JD = tjd
         rrd = pleph(JD + t_0 / 86400.0, 3, 12, inp["jpl_eph"])
@@ -178,7 +178,7 @@ class Dop(Doppler):
         state_ss_t0.append(moon)
         state_ss_t0.append(sun)
 
-        """ My algorithm from PhD thesis """
+        # My algorithm from PhD thesis
         # direction vector
         n_b = (R_0 - R_1) / norm(R_0 - R_1)
         # >> calculate dtau_s(t_s)/dTCB, dtau_o(t_s)/dTCB and f_b(t_o)/f_b(t_s)
@@ -216,7 +216,7 @@ class Dop(Doppler):
         # >> put everything together
         fonafe = (1.0 + z_sh) * dtau_s_po_dTCB * (1.0 + dot(n_b, V_1) / C) / (dtau_o_po_dTCB * (1.0 + dot(n_b, V_0) / C))
 
-        """ correct fonafe if f is given in GC (i.e. it's not proper): """
+        # correct fonafe if f is given in GC (i.e. it's not proper):
         if x_way == "one" and freq_type == "gc":
             #        raise NotImplemented
             x, _ = lagint(lag_order, utc, gcrs[:, 6], dd + t_utc - lt_01)
@@ -236,16 +236,15 @@ class Dop(Doppler):
         if x_way == "one":
             return fonafe
 
-        """ 2(3)-way Doppler:
-            calculate upleg light-time from Transmitter to S/C
-            to find signal transmission time t_2 given the reception time t_0
-        """
+        # 2(3)-way Doppler:
+        # calculate upleg light-time from Transmitter to S/C
+        # to find signal transmission time t_2 given the reception time t_0
         # BCRS radius vectors of the transmitting site at t_1:
         R_2_t_1 = earth[:, 0] + (1.0 - U / (C**2) - L_C) * r_2 - dot(earth[:, 1], r_2) * earth[:, 1] / (2.0 * C**2)
 
-        """ calculate upleg light-time from Transmitter to S/C
-            to find signal transmission t_2 time given the reception time t_0
-        """
+        # calculate upleg light-time from Transmitter to S/C
+        # to find signal transmission t_2 time given the reception time t_0
+        
         # initial approximation:
         nn = 0
         lt_20_tmp = 0.0
@@ -266,15 +265,15 @@ class Dop(Doppler):
         if UTC < 0:
             UTC, JD, mjd = UTC + 1, astropy_t_2.utc.jd1 - 1, astropy_t_2.utc.mjd - 1
 
-        """ compute tai & tt """
+        # compute tai & tt
         TAI, TT = taitime(mjd, UTC)
-        """ interpolate eops to tstamp """
+        # interpolate eops to tstamp
         UT1, eop_int = eop_iers(mjd, UTC, eops)
 
-        """ compute coordinate time fraction of CT day at 2nd observing site """
+        # compute coordinate time fraction of CT day at 2nd observing site
         CT, dTAIdCT = t_eph(JD, UT1, TT, sta2.lon_gcen, sta2.u, sta2.v)
 
-        """ BCRS state vectors of celestial bodies at JD+CT, [m, m/s]: """
+        # BCRS state vectors of celestial bodies at JD+CT, [m, m/s]:
         ## Earth:
         rrd = pleph(JD + CT, 3, 12, inp["jpl_eph"])
         earth = np.vstack(rrd).T * 1e3
@@ -299,11 +298,11 @@ class Dop(Doppler):
         state_ss_t2.append(moon)
         state_ss_t2.append(sun)
 
-        """ rotation matrix IERS """
+        # rotation matrix IERS
         tstamp = astropy_t_2.utc.datetime
         r2000 = ter2cel(tstamp, eop_int, dTAIdCT, "iau2000")
 
-        """ displacements due to geophysical effects """
+        # displacements due to geophysical effects
         if sta2.name == "GEOCENTR":
             pass
         else:
@@ -314,7 +313,7 @@ class Dop(Doppler):
             # rotational deformation due to pole tide:
             sta2 = poletide(sta2, tstamp, eop_int, r2000)
 
-        """ add up geophysical corrections and convert sta state to J2000 """
+        # add up geophysical corrections and convert sta state to J2000
         sta2.j2000gp(r2000)
 
         r_2 = sta2.r_GCRS
@@ -376,7 +375,7 @@ class Dop(Doppler):
         astropy_t_2 = Time(mjd, t_2 / 86400.0, format="mjd", scale="tdb", precision=9, location=EarthLocation.from_geocentric(*sta2.r_GTRS, unit=units.m))
         t_2_UTC = astropy_t_2.utc.jd2
 
-        """ My algorithm from PhD thesis """
+        # My algorithm from PhD thesis
         # direction vector
         n_b = (R_2 - R_0) / norm(R_2 - R_0)
         # >> calculate dtau_s(t_s)/dTCB, dtau_o(t_s)/dTCB and f_b(t_o)/f_b(t_s)
@@ -419,6 +418,7 @@ class Dop(Doppler):
             fonafe *= 1 + L_G
 
         return fonafe
+    """
 
 
     def calculate(self, obs: "Observation") -> Any:
