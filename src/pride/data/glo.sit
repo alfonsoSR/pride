@@ -14,13 +14,13 @@ $$
 $$  Modifications:
 $$  Who  When        What
 $$  pet  2005.12.22  Added coordinats of BADARY, ZELENCHK, VERAIRIK, VERAISGK,
-$$                   VERAOGSW   
+$$                   VERAOGSW
 $$  pet  2005.12.29  Added coordinats of station GEOCENTR
-$$  pet  2006.01.19  Fixed position of METSAHOV which had a big error 
+$$  pet  2006.01.19  Fixed position of METSAHOV which had a big error
 $$                   due to wrong eccentricity
 $$  pet  2006.01.20  Updated position of ZELENCHK
-$$  pet  2006.02.09  Updated position of VERAIRIK, VERAISGK, VERAOGSW   
-$$  pet  2006.03.30  Updated position of DSS65A, SINTOTU3, and ZELENCHK 
+$$  pet  2006.02.09  Updated position of VERAIRIK, VERAISGK, VERAOGSW
+$$  pet  2006.03.30  Updated position of DSS65A, SINTOTU3, and ZELENCHK
 $$  pet  2006.09.05  Added positions of ATCA-104 and MOPRA from vt_008 fringe
 $$                   test. Added apriori position of CEDUNA.
 $$  pet  2008.01.22  Updated positions of ATCA-104, CEDUNA, and MOPRA from v230a
@@ -29,8 +29,8 @@ $$  pet  2008.12.24  Added apriori position of CAMBRIDG, JODRELL2, TORUN and
 $$                   WSTRB-07
 $$  pet  2009.04.10  Added apriori position of DSS63
 $$  pet  2009.10.22  Improved position of DSS63 using gc030
-$$  pet  2010.09.12  Added stations ASKAP-29 and WARKWORT   
-$$  pet  2010.09.18  Updated stations ASKAP-29 and WARKWORT   
+$$  pet  2010.09.12  Added stations ASKAP-29 and WARKWORT
+$$  pet  2010.09.18  Updated stations ASKAP-29 and WARKWORT
 $$  pet  2010.09.18  Added apriori of ATCAPN5
 $$  pet  2010.11.08  Added HOBART12
 $$  pet  2011.02.07  Added DSS34
@@ -61,7 +61,7 @@ $$
     CARNUSTY    3526416.327     -171421.192     5294098.875   00 00 00 2005d_3.sta
     CARROLGA     453520.558    -5300506.777     3507207.459   00 00 00 2005d_3.sta
     CEBREROS    4846733.919     -370174.723     4116878.862   00 00 00 from Trevor?
-    CEDUNA     -3753442.731     3912709.767    -3348067.582   00 00 00 v230a 
+    CEDUNA     -3753442.747     3912709.753    -3348067.609   00 00 00 2025
     CHICHI10   -4490618.490     3483908.178     2884899.138   00 00 00 2005d_3.sta
     CHLBOLTN    4008310.053     -100650.745     4943794.814   00 00 00 2005d_3.sta
     CRIMEA      3785231.062     2551207.418     4439796.372   00 00 00 2005d_3.sta
@@ -110,8 +110,8 @@ $$
     HAYSTACK    1492404.731    -4457266.525     4296881.773   00 00 00 itrf2000.sit
     HITA32     -3961788.796     3243597.525     3790597.709   00 00 00 m131229.vex
     HN-VLBA     1446375.114    -4447939.660     4322306.122   00 00 00 itrf2000.sit
-    HOBART12   -3949990.106     2522421.118    -4311708.734   00 00 00 20101007_a
-    HOBART26   -3950236.737     2522347.560    -4311562.539   00 00 00 itrf2000.sit
+    HOBART12   -3949990.858     2522421.221    -4311707.943   00 00 00 ITRF24
+    HOBART26   -3950237.437     2522347.698    -4311561.799   00 00 00 ITRF24
     HOFN        2679650.255     -727916.435     5722807.252   00 00 00 2005d_3.sta
     HOHENFRG    3778214.705      698644.630     5074053.696   00 00 00 2005d_3.sta
     HOHNBERG    4213687.237      820422.964     4702784.248   00 00 00 2005d_3.sta
@@ -128,8 +128,7 @@ $$
     KASHIM11   -3997505.667     3276878.400     3724240.706   00 00 00 2005d_3.sta
     KASHIM34   -3997649.227     3276690.754     3724278.825   00 00 00 itrf2000.sit
     KASHIMA    -3997892.269     3276581.278     3724118.233   00 00 00 itrf2000.sit
-    KATH12M    -4147488.575     4581377.857    -1573427.292   00 00 00 vexade121205
-    KATH12M    -4147354.060     4581542.627    -1573304.191   00 00 00 ??
+    KATH12M    -4147354.720     4581542.369    -1573303.105   00 00 00 ITRF24
     KAUAI      -5543846.063    -2054563.643     2387814.111   00 00 00 itrf2000.sit
     KIRSBERG    3879830.862      987963.312     4948713.273   00 00 00 2005d_3.sta
     KODIAK     -3026940.295    -1575911.776     5370362.494   00 00 00 2005d_3.sta
@@ -250,7 +249,7 @@ $$
     VLA-N8     -1601147.743    -5041733.502     3555235.768   00 00 00 2005d_3.sta
     VLBA85 3     882325.560    -4925137.999     3943397.685   00 00 00 Default
     VNDNBERG   -2678094.952    -4525450.572     3597410.339   00 00 00 itrf2000.sit
-    WARK12M    -5115324.373      477843.314    -3767192.887   00 00 00 20110228_a
+    WARK12M     5115324.472      477843.291    -3767192.766   00 00 00 ITRF24
     WARK30M    -5115425.600      477880.300    -3767042.810   00 00 00 http://arxiv.org/pdf/1502.06802v1.pdf
     WESTFORD    1492206.588    -4458130.518     4296015.541   00 00 00 itrf2000.sit
     WETTZ13N    4075627.926      931774.140     4801552.221   00 00 00 Arno Muesken 2014Jun03
@@ -264,7 +263,7 @@ $$
     YAKATAGA   -2529744.367    -1942091.116     5505028.223   00 00 00 2005d_3.sta
     YAKATAGA   -2529744.398    -1942091.078     5505028.109   87 12 01 2005d_3.sta
     YAMAGU32   -3502544.259     3950966.397     3566381.165   00 00 00 m131229.vex
-    YARRA12M   -2388895.473     5043349.895    -3078591.564   00 00 00 rfc_2011c
+    YARRA12M   -2388896.230     5043350.013    -3078590.756   00 00 00 ITRF24
     YEBES       4848780.299     -261702.073     4123035.749   00 00 00 2005d_3.sta
     YEBES40M    4848761.965     -261484.497     4123084.827   00 00 00 2008d
     YELLOWKN   -1224124.640    -2689530.667     5633555.320   00 00 00 2005d_3.sta

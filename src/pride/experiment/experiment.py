@@ -376,6 +376,13 @@ class Experiment:
             output_files[code] = io.DelFile(outdir / f"{self.name}_{code}.del")
             output_files[code].create_file(code)
 
+            # Also create ASCII output file
+            output_files[code].create_ascii_file(
+                station_id=code,
+                experiment_name=self.name,
+                baseline=f"{baseline.station.id}",
+            )
+
             # Add observations to dictionary
             for observation in baseline.observations:
                 observations[(code, observation.source.name)] = observation
@@ -456,5 +463,17 @@ class Experiment:
                     [mjd2, zero, zero, zero, scan_delays, zero, zero + 1.0]
                 ).T
                 output_files[station_id].add_scan(scan_source_id, mjd1, data)
+
+                # Also write to ASCII file with individual delay components
+                # Extract delay components from observation's delay_dict
+                delay_components = {}
+                if hasattr(observation, "delay_dict") and observation.delay_dict:
+                    # Extract only the values for the current scan
+                    for model_name, model_delays in observation.delay_dict.items():
+                        delay_components[model_name] = model_delays[scan_mask]
+
+                output_files[station_id].add_scan_ascii(
+                    scan_source_id, mjd1, data, delay_components
+                )
 
         return None

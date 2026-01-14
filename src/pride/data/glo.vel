@@ -14,7 +14,7 @@ $$
 $$  Modifications:
 $$  Who  When        What
 $$  pet  2005.12.22  Added velocities of BADARY, ZELENCHK, VERAIRIK, VERAISGK,
-$$                   VERAOGSW. Set their velocity to NNR-NUVEL1A 
+$$                   VERAOGSW. Set their velocity to NNR-NUVEL1A
 $$  pet  2005.12.29  Added velocity of station GEOCENTR
 $$  pet  2006.01.19  Added velocity of DSS65A ( the same as DSS65 )
 $$  pet  2006.03.30  Updated velocty of SINTOTU and  SINTOTU3
@@ -23,7 +23,7 @@ $$                   NUVEL-NNR
 $$  pet  2008.12.24  Added apriori velocity of CAMBRIDG, JODRELL2, TORUN and
 $$                   WSTRB-07
 $$  pet  2009.04.10  Added apriori velocity of DSS63
-$$  pet  2010.09.12  Added stations ASKAP and WARKWORT   
+$$  pet  2010.09.12  Added stations ASKAP and WARKWORT
 $$  pet  2010.09.18  Added station  ATCAPN5
 $$  pet  2010.11.08  Added HOBART12
 $$  pet  2011.02.07  Added DSS34
@@ -81,22 +81,22 @@ $$
     GBT-VLBA          -13.37           -2.09            2.52    2005d_3.vel
     GBTS              -13.37           -2.09            2.52    as GBT-VLBA
     GGAO7108          -14.22           -0.21            0.11    2005d_3.vel
-    GIFU11            -10.53           -2.26          -12.87    as GIFU 
+    GIFU11            -10.53           -2.26          -12.87    as GIFU
     GIFU3             -10.53           -2.26          -12.87    2005d_3.vel
     GILCREEK          -20.75           -3.24           -9.48    2005d_3.vel
-    GOLDMARS          -17.50            6.44           -4.42    as DSS15 
-    GOLDVENU          -17.50            6.44           -4.42    as DSS15 
+    GOLDMARS          -17.50            6.44           -4.42    as DSS15
+    GOLDVENU          -17.50            6.44           -4.42    as DSS15
     GORF7102          -14.22           -0.21            0.11    as GGAO7108
     GRASSE            -13.09           19.03           10.09    2005d_3.vel
-    HALEAKAL           -9.50           63.00           29.80    as KAUAI 
+    HALEAKAL           -9.50           63.00           29.80    as KAUAI
     HARTRAO            -1.20           19.80           15.90    itrf2000.vel
     HART15M            -0.20           19.30           17.30    ep04a
     HATCREEK          -19.50            6.90           -7.90    itrf2000.vel
     HAYSTACK          -15.60           -1.30            2.60    itrf2000.vel
     HITA32              0.00            0.00            0.00    m131229.vex
     HN-VLBA           -14.90           -1.80            3.40    itrf2000.vel
-    HOBART12          -39.90            9.00           39.90    itrf2000.vel
-    HOBART26          -39.90            9.00           39.90    itrf2000.vel
+    HOBART12          -38.80            7.88           41.01    ITRF24
+    HOBART26          -38.11            8.06           40.90    itrf2000.vel
     HOFN               -6.39           14.84           12.60    2005d_3.vel
     HOHENFRG          -33.59           -3.02           19.33    2005d_3.vel
     HOHNBERG           -9.90           19.30            5.71    2005d_3.vel
@@ -109,15 +109,15 @@ $$
     KALYAZIN            0.00            0.00            0.00    ga035a.vex
     KANOZAN            -0.10            6.10          -11.10    2005d_3.vel
     KARLBURG            6.40           23.70          -10.40    2005d_3.vel
-    KASHIM11           -0.30            5.20          -11.80    as KASHIM34 
+    KASHIM11           -0.30            5.20          -11.80    as KASHIM34
     KASHIM34           -0.30            5.20          -11.80    itrf2000.vel
-    KASHIMA            -0.30            5.20          -11.80    as KASHIM34 
-    KATH12M           -36.83          -13.71           57.16  ! NNR-NUVEL1A
+    KASHIMA            -0.30            5.20          -11.80    as KASHIM34
+    KATH12M           -35.52          -14.15           56.39    ITRF24
     KAUAI              -9.50           63.00           29.80    itrf2000.vel
     KIRSBERG           17.60           12.29          -18.20    2005d_3.vel
     KODIAK            -19.14            2.92           -1.27    2005d_3.vel
     KOGANEI            -2.27            4.56           -5.46    2005d_3.vel
-    KOGANEI3           -2.27            4.56           -5.46    as KOGANEI 
+    KOGANEI3           -2.27            4.56           -5.46    as KOGANEI
     KOKEE              -9.50           63.00           29.80    itrf2000.vel
     KP-VLBA           -13.10            0.70           -8.30    itrf2000.vel
     KUNMING           -24.18           -1.39           -8.62  ! NNR-NUVEL1A
@@ -143,10 +143,10 @@ $$
     MIURA              10.53            4.81            3.20    2005d_3.vel
     MIYAZAKI          -11.26           -4.20          -17.62    2005d_3.vel
     MIYUN50           -44.40           14.10           -1.30    BEIJING
-    MIZNAO10            3.35            5.70           -3.32    2005d_3.vel 
-    MIZUSGSI            3.35            5.70           -3.32    as MIZNAO10 
+    MIZNAO10            3.35            5.70           -3.32    2005d_3.vel
+    MIZUSGSI            3.35            5.70           -3.32    as MIZNAO10
     MK-VLBA           -13.50           63.10           29.60    itrf2000.vel
-    MOJ 7288          -16.10            5.90           -5.10    as MOJAVE12 
+    MOJ 7288          -16.10            5.90           -5.10    as MOJAVE12
     MOJAVE12          -16.10            5.90           -5.10    itrf2000.vel
     MON PEAK          -31.21           31.26            7.88    2005d_3.vel
     MOPRA             -34.47           -3.61           45.97    NNR-NUVEL1A
@@ -155,7 +155,7 @@ $$
     NOBEY 6M           -3.61            7.69          -10.95    2005d_3.vel
     NOME              -26.51           -8.43           -3.29    2005d_3.vel
     NOTO              -17.30           17.40           13.40    itrf2000.vel
-    NOTOX             -17.30           17.40           13.40    as NOTO 
+    NOTOX             -17.30           17.40           13.40    as NOTO
     NRAO 140          -13.67           -0.05            0.18    as NRAO20
     NRAO20            -14.60           -0.80            0.60    itrf2000.vel
     NRAO85 1          -13.67           -0.05            0.18    as NRAO20
@@ -165,10 +165,10 @@ $$
     OCOTILLO          -28.20           23.31           13.67    2005d_3.vel
     OHIGGINS           17.45           -1.34           -1.46    2005d_3.vel
     ONSALA60          -13.40           14.80            9.50    itrf2000.vel
-    ONSALA85          -13.40           14.80            9.50    as ONSALA60 
+    ONSALA85          -13.40           14.80            9.50    as ONSALA60
     OV-VLBA           -17.00            8.40           -7.00    itrf2000.vel
     OVR 7853          -17.00            8.40           -7.00    as OV-VLBA
-    OVRO 130          -17.00            8.40           -7.00    as OV-VLBI 
+    OVRO 130          -17.00            8.40           -7.00    as OV-VLBI
     PARKES            -33.64           -4.77           47.90    2005d_3.vel
     PBLOSSOM          -15.72           28.69           -6.00    2005d_3.vel
     PENTICTN          -21.16          -13.77            7.18    2005d_3.vel
@@ -181,7 +181,7 @@ $$
     PVERDES           -24.72           35.43            6.33    2005d_3.vel
     QUINCY            -18.60            9.47           -7.60    2005d_3.vel
     RICHMOND           -9.70           -1.30            1.30    itrf2000.vel
-    ROBLED32           -7.06           19.61           12.37    as DSS65 
+    ROBLED32           -7.06           19.61           12.37    as DSS65
     SAGARA            -10.62            1.86          -13.31    2005d_3.vel
     SANPAULA          -34.63           18.14           15.09    2005d_3.vel
     SANTIA12           22.10           -5.90           11.10    itrf2000.vel
@@ -190,7 +190,7 @@ $$
     SEATTLE1           -5.95           13.61          -24.18    2005d_3.vel
     SESHAN25          -30.70          -11.20          -13.40    itrf2000.vel
     SEST               -0.26           -4.69            7.70    2005d_3.vel
-    SHANGHAI          -30.70          -11.20          -13.40    as SESHAN25 
+    SHANGHAI          -30.70          -11.20          -13.40    as SESHAN25
     SINTOTU            -6.96            0.78          -12.48    2006b
     SINTOTU3           -6.96            0.78          -12.48    as SINTOTU
     SNDPOINT          -19.72            2.91          -10.11    2005d_3.vel
@@ -200,16 +200,16 @@ $$
     SYOWA               6.30           -2.02           -4.83    2005d_3.vel
     TATEYAMA           12.40            1.55            7.36    2005d_3.vel
     TIANMA65          -30.14          -10.95          -14.50    Weihua Wang 10.03.2014
-    TIDBIN64          -37.60            1.10           44.00    as DSS45 
+    TIDBIN64          -37.60            1.10           44.00    as DSS45
     TIGOCONC           34.21           -3.49           17.95    2005d_3.vel
-    TIGOWTZL          -15.70           17.20            8.70    as WETTZELL 
+    TIGOWTZL          -15.70           17.20            8.70    as WETTZELL
     TITIJIMA           15.54           16.57            4.15    2005d_3.vel
     TOMAKO11            0.46            3.95           -2.35    2005d_3.vel
     TORUN             -16.00           16.46            7.50    NNR-NUVEL1A
     TOULOUSE          -13.40           18.80            8.80    2005d_3.vel
     TROMSONO          -17.97           21.59            7.07    2005d_3.vel
     TRYSILNO           -5.70            9.98           21.41    2005d_3.vel
-    TSUKU3             -1.20            7.30           -8.70    as TSUKUB32 
+    TSUKU3             -1.20            7.30           -8.70    as TSUKUB32
     TSUKUB32           -1.20            7.30           -8.70    itrf2000.vel
     TSUKUBA            -0.52            6.05           -7.64    2005d_3.vel
     UCHINOUR           -0.52            6.05           -7.64    as TSUKB32
@@ -218,13 +218,13 @@ $$
     USUDA64            -4.30            4.80           -5.10    2005d_3.vel
     VERAIRIK          -11.34           -3.95           -7.07    v2
     VERAISGK          -25.70            4.55          -40.19    v2
-    VERAMZSW            3.35            5.70           -3.32    2005d_3.vel 
+    VERAMZSW            3.35            5.70           -3.32    2005d_3.vel
     VERAOGSW           33.90           19.14           28.60    v2
     VERNAL            -14.91           -8.22           -1.84    2005d_3.vel
     VICTORIA          -10.46           -1.30           -6.34    2005d_3.vel
-    VLA               -14.70           -0.60           -8.40    as PIETOWN 
-    VLA-N8            -14.70           -0.60           -8.40    as PIETOWN 
-    VLBA85 3          -14.70           -0.60           -8.40    as PIETOWN 
+    VLA               -14.70           -0.60           -8.40    as PIETOWN
+    VLA-N8            -14.70           -0.60           -8.40    as PIETOWN
+    VLBA85 3          -14.70           -0.60           -8.40    as PIETOWN
     VNDNBERG          -31.20           30.00           19.50    itrf2000.vel
     WARK12M           -19.60           -2.50           34.10    http://arxiv.org/pdf/1502.06802v1.pdf
     WARK30M           -19.60           -2.50           34.10    http://arxiv.org/pdf/1502.06802v1.pdf
@@ -233,15 +233,15 @@ $$
     WETTZ13S          -15.70           17.20            8.70    as WETTZELL
     WETTZELL          -15.70           17.20            8.70    itrf2000.vel
     WHTHORSE           24.84           41.93          -86.87    2005d_3.vel
-    WIDE85 3          -14.70           -0.60           -8.40    as PIETOWN 
+    WIDE85 3          -14.70           -0.60           -8.40    as PIETOWN
     WSTRB-07          -13.52           17.05            8.73    NNR-NUVEL1A
     WSTRBORK          -13.53           17.04            8.73    raes05d.vex
     YAKATAGA          -21.78           22.81           25.55    2005d_3.vel
     YAMAGU32            0.00            0.00            0.00    m131229.vex
-    YARRA12M          -47.45            9.12           51.76    NNR-NUVEL1A
+    YARRA12M          -46.52            8.26           50.61    ITRF24
     YEBES              -9.91           19.86            9.89    2005d_3.vel
     YEBES40M           -9.91           19.86            9.89    as YEBES
-    YELLOWKN          -19.80           -4.09           -1.27    as YELLOWKN 
+    YELLOWKN          -19.80           -4.09           -1.27    as YELLOWKN
     YLOW7296          -19.80           -4.09           -1.27    2005d_3.vel
     YUMA              -17.58          -11.47           -0.22    2005d_3.vel
     ZELENCHK          -19.69           14.47            5.55    2008c.vel

@@ -19,7 +19,7 @@ bepicolombo:
   short_name: bepicolombo
   api: ESA
   meta_kernel: bc_ops.tm
-  downlink_frequency: 8400. # default
+  downlink_frequency: 8420. # default
   uses_frequency_ramping: True
 
 juice:
@@ -27,7 +27,7 @@ juice:
   short_name: juice
   api: ESA
   meta_kernel: juice_crema_5_0b23_1.tm
-  downlink_frequency: 8400. # default
+  downlink_frequency: 8425. # default
   uses_frequency_ramping: False
 
 exomars:

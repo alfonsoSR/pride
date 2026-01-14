@@ -26,7 +26,7 @@ Configuration:
     neptune_barycenter
   ]
   # EOP Bulletin [A, B]
-  eop_bulletin: "B"
+  eop_bulletin: "A"
   # Format used to specify dates in VEX files
   vex_date_format: "%Yy%jd%Hh%Mm%Ss"
   # Step size and minimum number of observations for scan discretization
