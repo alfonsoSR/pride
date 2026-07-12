@@ -76,7 +76,6 @@ class NearFieldSource(Source):
 
         # Calculate BCRS position of source at RX
         et_rx = utils.get_ephemeris_time_from_epoch(rx)
-        xsrc_bcrf_rx = astro.get_icrf_position_vector(self.spice_id, et_rx)
 
         # Get list of bodies to consider for relativistic correction
         _bodies = io.internal_parameter("lt_correction_bodies")
@@ -84,25 +83,25 @@ class NearFieldSource(Source):
         bodies = external_bodies + ["earth"]
 
         # Initialize arrays for GM and BCRF position of massive bodies
-        xbodies_bcrf_rx = np.zeros((len(bodies), len(et_rx), 3))
-        bodies_gm = np.zeros(len(bodies))
-        x_external_bodies_bcrf_rx = np.zeros((len(bodies) - 1, len(et_rx), 3))
-        external_bodies_gm = np.zeros(len(bodies) - 1)
+        x_external_bodies_bcrf_rx = np.zeros(
+            (len(external_bodies), len(et_rx), 3)
+        )
+        external_bodies_gm = np.zeros(len(external_bodies))
 
         # Get GM and BCRF position of all external bodies at RX
         for idx, body in enumerate(external_bodies):
 
-            bodies_gm[idx] = astro.get_body_gravitational_parameter(body)
-            xbodies_bcrf_rx[idx] = astro.get_icrf_position_vector(body, et_rx)
-            external_bodies_gm[idx] = bodies_gm[idx]
-            x_external_bodies_bcrf_rx[idx] = xbodies_bcrf_rx[idx]
+            external_bodies_gm[idx] = astro.get_body_gravitational_parameter(
+                body
+            )
+            x_external_bodies_bcrf_rx[idx] = astro.get_icrf_position_vector(
+                body, et_rx
+            )
 
         # Add Earth to the arrays including all bodies and get its BCRF velocity
-        bodies_gm[-1] = astro.get_body_gravitational_parameter("earth")
         __s_earth_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
         xearth_bcrf_rx = __s_earth_bcrf_rx[:, :3]
         vearth_bcrf_rx = __s_earth_bcrf_rx[:, 3:]
-        xbodies_bcrf_rx[-1] = xearth_bcrf_rx
 
         # Calculate Newtonian potential of external bodies at geocenter
         U_earth = astro.calculate_newtonian_potential_from_bcrf_positions(
@@ -119,79 +118,16 @@ class NearFieldSource(Source):
             U_earth,
         )
 
-        # Initialize light travel time between source and station
-        lt_0 = np.linalg.norm(xsta_bcrf_rx - xsrc_bcrf_rx, axis=-1) / CLIGHT
-        tx_0: time.Time = rx.tdb - time.TimeDelta(
-            lt_0, format="sec", scale="tdb"
-        )
-
-        # Initialize variables for iterative estimation of TX
-        lt_i = 0.0 * lt_0
-        n_i = 0
+        # Retrieve settings for Newton-Raphson algorithm
         precision = float(io.internal_parameter("lt_precision"))
         n_max = int(io.internal_parameter("lt_max_iterations"))
-        # precision = float(
-        #     io.load_catalog("config.yaml")["Configuration"]["lt_precision"]
-        # )
-        # n_max = io.load_catalog("config.yaml")["Configuration"][
-        #     "lt_max_iterations"
-        # ]
-        # precision = float(self.exp.setup.internal["lt_precision"])
-        # n_max = self.exp.setup.internal["lt_max_iterations"]
 
-        # Iterative correction of TX
-        # Function: F(TX) = RX - TX - R_01/c - RLT_01
-        # Derivative: dF/dTX = -1 + (R_01_vec * dR_0_vec/dTX) / (R_01 * c)
-        # Newton-Raphson: TX_{i+1} = TX_i - F(TX_i) / dF/dTX
-        # Equivalent: LT_{i+1} = LT_i + F(TX_i) / dF/dTX
-        while np.any(np.abs(lt_0 - lt_i) > precision) and (n_i < n_max):
+        # Calculate light-time between source and station
+        lt_0 = astro.light_time_from_rx_epoch(
+            rx, xsta_bcrf_rx, self.spice_id, bodies, precision, n_max
+        )
 
-            # Update light travel time and TX
-            lt_i = lt_0
-            tx_i = rx.tdb - time.TimeDelta(lt_i, format="sec", scale="tdb")
-
-            # Convert TX to ephemeris time
-            et_tx = utils.get_ephemeris_time_from_epoch(tx_i)  # type: ignore
-
-            # Calculate BCRF coordinates of source at TX
-            ssrc_bcrf_tx = astro.get_icrf_state_vector(self.spice_id, et_tx)
-            xsrc_bcrf_tx = ssrc_bcrf_tx[:, :3]
-            vsrc_bcrf_tx = ssrc_bcrf_tx[:, 3:]
-
-            # Calculate BCRF coordinates of celestial bodies at TX
-            xbodies_bcrf_tx = np.array(
-                [astro.get_icrf_position_vector(body, et_tx) for body in bodies]
-            )
-
-            # Calculate relativistic correction
-            rlt_01 = astro.post_newtonian_near_field_effect(
-                bodies_gm,
-                xsta_bcrf_rx,
-                xsrc_bcrf_tx,
-                xbodies_bcrf_rx,
-                xbodies_bcrf_tx,
-            )
-
-            # Calculate relative position of station and source (non-aberrated)
-            r01 = xsta_bcrf_rx - xsrc_bcrf_tx  # (N, 3)
-            r01_mag = np.linalg.norm(r01, axis=-1)  # (N,)
-
-            # Evaluate function and derivative for Newton-Raphson
-            f = lt_i - (r01_mag / CLIGHT) - rlt_01
-            dfdtx = (
-                -1.0
-                + np.sum((r01 / r01_mag[:, None]) * vsrc_bcrf_tx, axis=-1)
-                / CLIGHT
-            )
-
-            # Update light travel time and TX
-            lt_0 = lt_i + f / dfdtx
-            tx_0 = rx.tdb - time.TimeDelta(lt_0, format="sec", scale="tdb")
-
-            # Update iteration counter
-            n_i += 1
-
-        return tx_0
+        return rx.tdb - lt_0
 
     def spherical_coordinates(
         self, obs: "Observation"

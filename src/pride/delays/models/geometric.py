@@ -55,7 +55,6 @@ class Geometric(Delay):
         rx_station: time.Time = obs.tstamps.tdb  # type: ignore
         assert tx.scale == "tdb"  # Sanity
         assert rx_station.scale == "tdb"  # Sanity
-        lt_station: np.ndarray = (rx_station - tx).to("s").value  # type: ignore
 
         # Calculate RX epoch at phase center [Geocenter]
         #######################################################################
@@ -67,11 +66,6 @@ class Geometric(Delay):
         et_tx = utils.get_ephemeris_time_from_epoch(tx)
         xsrc_bcrf_tx = astro.get_icrf_position_vector(source.spice_id, et_tx)
 
-        # Calculate BCRF position of phase center at estimated RX epoch
-        # NOTE: Seems logical to initialize RX with the one of the station
-        et_rx = utils.get_ephemeris_time_from_epoch(rx_station)
-        xphc_bcrf_rx = astro.get_icrf_position_vector("earth", et_rx)
-
         # Calculate gravitational parameter of celestial bodies
         _bodies: list = self.exp.setup.internal["lt_correction_bodies"]
         bodies = [bi for bi in _bodies if bi != "earth"]
@@ -79,96 +73,23 @@ class Geometric(Delay):
             [astro.get_body_gravitational_parameter(body) for body in bodies]
         )
 
-        # Calculate BCRF positions of celestial bodies at TX
-        xbodies_bcrf_tx = np.array(
-            [astro.get_icrf_position_vector(body, et_tx) for body in bodies]
-        )
-
-        # Calculate position of source wrt celestial bodies at TX
-        r0b = xsrc_bcrf_tx[None, :, :] - xbodies_bcrf_tx
-        r0b_mag = np.linalg.norm(r0b, axis=-1)  # (M, N)
-
-        # Initialize light travel time and rx epoch
-        # lt_np1 = LT_{n+1}
-        lt_np1 = np.linalg.norm(xphc_bcrf_rx - xsrc_bcrf_tx, axis=-1) / CLIGHT
-        rx_np1 = tx + time.TimeDelta(lt_np1, format="sec", scale="tdb")
-
-        # Initialize variables for iteration
-        lt_n = 0.0 * lt_np1
-        n_iter = 0
+        # Load precision and max iterations for light-time calculation
         iter_max = self.exp.setup.internal["lt_max_iterations"]
         precision = float(self.exp.setup.internal["lt_precision"])
 
-        # Iterative correction of LT and RX
-        # Function: F(RX) = RX - TX - R_02/c - RLT_02
-        # Derivative: dF/dRX = 1 - (R_02_vec * dR_2_vec/dRX) / (R_02 * c)
-        # Newton-Raphson: RX_{n+1} = RX_n - F(RX_n) / dF/dRX
-        # Equivalent: LT_{n+1} = LT_n - F(RX_n) / dF/dRX
-        while np.any(np.abs(lt_np1 - lt_n) > precision) and n_iter < iter_max:
-
-            # Update light travel time and RX
-            lt_n = lt_np1
-            rx_n = tx + time.TimeDelta(lt_n, format="sec", scale="tdb")
-
-            # Convert RX to ephemeris time
-            et_rx = utils.get_ephemeris_time_from_epoch(rx_n)
-
-            # Calculate BCRF coordinates of phase center at RX
-            sphc_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
-            xphc_bcrf_rx = sphc_bcrf_rx[:, :3]
-            vphc_bcrf_rx = sphc_bcrf_rx[:, 3:]
-
-            # Calculate BCRF positions of celestial bodies at RX
-            xbodies_bcrf_rx = np.array(
-                [astro.get_icrf_position_vector(body, et_rx) for body in bodies]
-            )
-
-            # Calculate relativistic correction
-            # r02 = xphc_bcrf_rx - xsrc_bcrf_tx  # (N, 3)
-            # r02_mag = np.linalg.norm(r02, axis=-1)  # (N,)
-            # r2b = xphc_bcrf_rx[None, :, :] - xbodies_bcrf_rx  # (M, N, 3)
-            # r2b_mag = np.linalg.norm(r2b, axis=-1)  # (M, N)
-            # r02b_mag = np.linalg.norm(r2b - r0b, axis=-1)  # (M, N)
-            # gmc = 2.0 * bodies_gm[:, None] / clight2  # (M, 1)
-            # rlt_02 = np.sum(
-            #     (gmc / CLIGHT)
-            #     * np.log(
-            #         (r0b_mag + r2b_mag + r02b_mag + gmc)
-            #         / (r0b_mag + r2b_mag - r02b_mag + gmc)
-            #     ),
-            #     axis=0,
-            # )
-
-            rlt_02 = astro.post_newtonian_near_field_effect(
-                bodies_gm,
-                xphc_bcrf_rx,
-                xsrc_bcrf_tx,
-                xbodies_bcrf_rx,
-                xbodies_bcrf_tx,
-            )
-
-            # Calculate relative position of phase center and source (non-aberrated)
-            r02 = xphc_bcrf_rx - xsrc_bcrf_tx  # (N, 3)
-            r02_mag = np.linalg.norm(r02, axis=-1)  # (N,)
-
-            # Evaluate function and derivative
-            f = lt_n - (r02_mag / CLIGHT) - rlt_02
-            dfdrx = (
-                1.0
-                - np.sum((r02 / r02_mag[:, None]) * vphc_bcrf_rx, axis=-1)
-                / CLIGHT
-            )
-
-            # Update light travel time and RX
-            lt_np1 = lt_n - f / dfdrx
-            rx_np1 = tx + time.TimeDelta(lt_np1, format="sec", scale="tdb")
-
-            # Update iteration
-            n_iter += 1
+        lt_np1 = astro.light_time_from_tx_epoch(
+            tdb_tx=tx.tdb,
+            xsrc_bcrf_tx=xsrc_bcrf_tx,
+            receiver_id="earth",
+            perturbing_bodies=bodies,
+            precision=precision,
+            max_iterations=iter_max,
+        )
 
         # Calculate post-newtonian correction for path between stations
         # #####################################################################
         # NOTE: From now on, I refer to the RX of the station as rx1 and to the RX of the phase center as rx2
+        # NOTE: Could also be done as difference of two complete summations but it seems that numerical errors lead to relative differences in the order of 1e-5
 
         # Calculate BCRF position of station at RX1
         xsta_gcrf_rx1 = obs.station.location(obs.tstamps, frame="icrf")
@@ -191,7 +112,7 @@ class Geometric(Delay):
         )
 
         # Calculate BCRF position of phase center at RX2
-        rx2 = rx_np1
+        rx2 = tx.tdb + lt_np1
         et_rx2 = utils.get_ephemeris_time_from_epoch(rx2)
         xphc_bcrf_rx2 = astro.get_icrf_position_vector("earth", et_rx2)
 
@@ -201,6 +122,11 @@ class Geometric(Delay):
         )
         xbodies_bcrf_rx2 = np.array(
             [astro.get_icrf_position_vector(body, et_rx2) for body in bodies]
+        )
+
+        # Calculate BCRF positions of celestial bodies at TX
+        xbodies_bcrf_tx = np.array(
+            [astro.get_icrf_position_vector(body, et_tx) for body in bodies]
         )
 
         # Calculate relativistic correction
@@ -229,7 +155,7 @@ class Geometric(Delay):
             axis=0,
         )
 
-        # Calculate delay in TT
+        # Calculate delay in TT (Duev's approach)
         #######################################################################
         dt: np.ndarray = (rx2 - rx1).to("s").value  # type: ignore
         vearth_mag = np.linalg.norm(vearth_bcrf_rx1, axis=-1)
