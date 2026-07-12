@@ -82,13 +82,24 @@ class OceanLoading(Displacement):
         # Calculate ocean loading displacements
         dv, dw, ds = np.zeros((3, len(epoch)))
         for idx, ti in enumerate(epoch):
-            dv[idx], dw[idx], ds[idx] = hardisp.hardisp(
+            __value = hardisp.hardisp(
                 str(ti.isot)[:-4],  # type: ignore
                 resources["amp"],
                 resources["phs"],
                 1,
                 1,
             )
+            dv[idx] = __value[0][0]
+            dw[idx] = __value[1][0]
+            ds[idx] = __value[2][0]
+
+            # dv[idx], dw[idx], ds[idx] = hardisp.hardisp(
+            #     str(ti.isot)[:-4],  # type: ignore
+            #     resources["amp"],
+            #     resources["phs"],
+            #     1,
+            #     1,
+            # )
 
         # Convert displacements to ITRF
         disp_seu = np.array([ds, -dw, dv])
