@@ -122,7 +122,7 @@ class Ionospheric(Delay):
 
             # Get TEC at station coordinates for each epoch in coverage
             station_local_tec: list[float] = [
-                float(tec_interpolator([lon, lat]))
+                float(tec_interpolator([lon, lat])[0])
                 for tec_interpolator, lon, lat in zip(
                     tec_grid_interpolators.values(),
                     station_longitudes,
