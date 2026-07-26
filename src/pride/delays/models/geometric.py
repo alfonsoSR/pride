@@ -98,14 +98,17 @@ class Geometric(Delay):
         searth_bcrf_rx1 = astro.get_icrf_state_vector("earth", et_rx1)
         xearth_bcrf_rx1 = searth_bcrf_rx1[:, :3]
         vearth_bcrf_rx1 = searth_bcrf_rx1[:, 3:]
-        xsun_bcrf_rx1 = astro.get_icrf_position_vector("sun", et_rx1)
 
         # Calculate gravitational potential due to Sun at geocenter
-        mu_sun = astro.get_body_gravitational_parameter("sun")
-        r_earth_sun_rx1 = np.linalg.norm(
-            xearth_bcrf_rx1 - xsun_bcrf_rx1, axis=-1
+        U_geocenter = astro.calculate_newtonian_potential_from_bcrf_positions(
+            massive_bodies_gm=np.array(
+                [astro.get_body_gravitational_parameter("sun")]
+            ),
+            x_target_bcrf=xearth_bcrf_rx1,
+            x_bodies_bcrf=astro.get_icrf_position_vector("sun", et_rx1)[
+                None, :, :
+            ],
         )
-        U_geocenter = mu_sun / r_earth_sun_rx1
 
         xsta_bcrf_rx1 = astro.transform_position_from_gcrf_to_bcrf(
             xsta_gcrf_rx1, xearth_bcrf_rx1, vearth_bcrf_rx1, U_geocenter
@@ -191,10 +194,15 @@ class Geometric(Delay):
         searth_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
         xearth_bcrf_rx = searth_bcrf_rx[:, :3]
         vearth_bcrf_rx = searth_bcrf_rx[:, 3:]
-        xsun_bcrf_rx = astro.get_icrf_position_vector("sun", et_rx)
-        gm_sun = astro.get_body_gravitational_parameter("sun")
-        U_earth = gm_sun / np.linalg.norm(
-            xsun_bcrf_rx - xearth_bcrf_rx, axis=-1
+
+        U_earth = astro.calculate_newtonian_potential_from_bcrf_positions(
+            massive_bodies_gm=np.array(
+                [astro.get_body_gravitational_parameter("sun")]
+            ),
+            x_target_bcrf=xearth_bcrf_rx,
+            x_bodies_bcrf=astro.get_icrf_position_vector("sun", et_rx)[
+                None, :, :
+            ],
         )
 
         # Calculate BCRF position of station at RX
