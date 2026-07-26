@@ -7,8 +7,11 @@ from .ephemerides import (
 )
 from .relativity import (
     post_newtonian_near_field_effect,
+    post_newtonian_near_field_delay,
     transform_position_from_gcrf_to_bcrf,
     transform_position_from_bcrf_to_gcrf,
+    calculate_sekido_fukushima_near_field_delay,
+    calculate_duev_near_field_delay,
 )
 from .gravitation import (
     calculate_newtonian_potential,
@@ -25,6 +28,9 @@ __all__ = [
     "get_gcrf_position_vector",
     "get_body_gravitational_parameter",
     "post_newtonian_near_field_effect",
+    "post_newtonian_near_field_delay",
+    "calculate_sekido_fukushima_near_field_delay",
+    "calculate_duev_near_field_delay",
     "calculate_newtonian_potential",
     "calculate_newtonian_potential_from_bcrf_positions",
     "light_time_from_rx_epoch",

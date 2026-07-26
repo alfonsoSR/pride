@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 from ...logger import log
 from astropy import time
 import numpy as np
+from nastro import graphics as ng
 
 from ...source import FarFieldSource, NearFieldSource
 from ...constants import L_C, CLIGHT
@@ -36,7 +37,7 @@ class Geometric(Delay):
 
         return {}
 
-    def calculate_nearfield(self, obs: "Observation") -> np.ndarray:
+    def calculate_nearfield_duev(self, obs: "Observation") -> np.ndarray:
         """Calculate geometric delay for a near-field source
 
         NOTE: This function assumes that the phase center is the geocenter.
@@ -58,9 +59,6 @@ class Geometric(Delay):
 
         # Calculate RX epoch at phase center [Geocenter]
         #######################################################################
-
-        # Initialization
-        clight2 = CLIGHT * CLIGHT
 
         # Calculate BCRF position of source at TX epoch
         et_tx = utils.get_ephemeris_time_from_epoch(tx)
@@ -100,14 +98,13 @@ class Geometric(Delay):
         vearth_bcrf_rx1 = searth_bcrf_rx1[:, 3:]
 
         # Calculate gravitational potential due to Sun at geocenter
+        xbodies_bcrf_rx1 = np.array(
+            [astro.get_icrf_position_vector(body, et_rx1) for body in bodies]
+        )
         U_geocenter = astro.calculate_newtonian_potential_from_bcrf_positions(
-            massive_bodies_gm=np.array(
-                [astro.get_body_gravitational_parameter("sun")]
-            ),
+            massive_bodies_gm=bodies_gm,
             x_target_bcrf=xearth_bcrf_rx1,
-            x_bodies_bcrf=astro.get_icrf_position_vector("sun", et_rx1)[
-                None, :, :
-            ],
+            x_bodies_bcrf=xbodies_bcrf_rx1,
         )
 
         xsta_bcrf_rx1 = astro.transform_position_from_gcrf_to_bcrf(
@@ -119,10 +116,7 @@ class Geometric(Delay):
         et_rx2 = utils.get_ephemeris_time_from_epoch(rx2)
         xphc_bcrf_rx2 = astro.get_icrf_position_vector("earth", et_rx2)
 
-        # Calculate position of celestial bodies at RX1 and RX2
-        xbodies_bcrf_rx1 = np.array(
-            [astro.get_icrf_position_vector(body, et_rx1) for body in bodies]
-        )
+        # Calculate position of celestial bodies at RX2
         xbodies_bcrf_rx2 = np.array(
             [astro.get_icrf_position_vector(body, et_rx2) for body in bodies]
         )
@@ -132,44 +126,134 @@ class Geometric(Delay):
             [astro.get_icrf_position_vector(body, et_tx) for body in bodies]
         )
 
-        # Calculate relativistic correction
-        r01 = xsta_bcrf_rx1 - xsrc_bcrf_tx  # (N, 3)
-        r01_mag = np.linalg.norm(r01, axis=-1)  # (N,)
-        r02 = xphc_bcrf_rx2 - xsrc_bcrf_tx  # (N, 3)
-        r02_mag = np.linalg.norm(r02, axis=-1)  # (N,)
-        r0b = xsrc_bcrf_tx[None, :, :] - xbodies_bcrf_tx  # (M, N, 3)
-        r0b_mag = np.linalg.norm(r0b, axis=-1)
-        r1b = xsta_bcrf_rx1[None, :, :] - xbodies_bcrf_rx1  # (M, N, 3)
-        r1b_mag = np.linalg.norm(r1b, axis=-1)
-        r2b = xphc_bcrf_rx2[None, :, :] - xbodies_bcrf_rx2  # (M, N, 3)
-        r2b_mag = np.linalg.norm(r2b, axis=-1)
-        gmc = 2.0 * bodies_gm[:, None] / clight2  # (M, 1)
-
-        tg_12 = np.sum(
-            (gmc / CLIGHT)
-            * np.log(
-                (r2b_mag + r0b_mag + r02_mag)
-                * (r1b_mag + r0b_mag - r01_mag)
-                / (
-                    (r2b_mag + r0b_mag - r02_mag)
-                    * (r1b_mag + r0b_mag + r01_mag)
-                )
-            ),
-            axis=0,
+        # Calculate post-Newtonian correction
+        post_newtonian_correction = astro.post_newtonian_near_field_delay(
+            bodies_gm,
+            xsta_bcrf_rx1,
+            xphc_bcrf_rx2,
+            xsrc_bcrf_tx,
+            xbodies_bcrf_rx1,
+            xbodies_bcrf_rx2,
+            xbodies_bcrf_tx,
+            consider_bending=False,
         )
 
-        # Calculate delay in TT (Duev's approach)
-        #######################################################################
-        dt: np.ndarray = (rx2 - rx1).to("s").value  # type: ignore
-        vearth_mag = np.linalg.norm(vearth_bcrf_rx1, axis=-1)
-        baseline = -xsta_gcrf_rx1
-        v2 = 0.0 * vearth_bcrf_rx1  # Velocity of phase center in GCRF
-        return -(
-            (dt + tg_12)
-            * (1 - (0.5 * vearth_mag * vearth_mag + U_geocenter) / clight2)
-            / (1.0 - L_C)
-            - np.sum(vearth_bcrf_rx1 * baseline, axis=-1) / clight2
-        ) / (1.0 + np.sum(vearth_bcrf_rx1 * v2, axis=-1) / clight2)
+        # Calculate delay in TT
+        reference_delay = (rx2 - rx1).to("s").value  # type: ignore
+        return astro.calculate_duev_near_field_delay(
+            reference_delay=reference_delay,
+            bodies_gm=bodies_gm,
+            x_obs_gcrf_rx=xsta_gcrf_rx1,
+            s_earth_bcrf_rx=searth_bcrf_rx1,
+            x_bodies_bcrf_rx=xbodies_bcrf_rx1,
+            relativistic_correction=post_newtonian_correction,
+        )
+
+    def calculate_nearfield_sekido_fukushima(
+        self, obs: "Observation"
+    ) -> np.ndarray:
+        """Calculate geometric delay for a near-field source
+
+        NOTE: This function assumes that the phase center is the geocenter.
+        """
+
+        log.warning(
+            "Implementation of near-field geometric delay is not reliable"
+        )
+
+        # Sanity
+        source = obs.source
+        assert isinstance(source, NearFieldSource)
+
+        # Get TX epoch at spacecraft [Downlink SC -> Station]
+        tx = obs.tx_epochs
+        rx_station: time.Time = obs.tstamps.tdb  # type: ignore
+        assert tx.scale == "tdb"  # Sanity
+        assert rx_station.scale == "tdb"  # Sanity
+
+        # Calculate BCRF position of source at TX epoch
+        et_tx = utils.get_ephemeris_time_from_epoch(tx)
+        xsrc_bcrf_tx = astro.get_icrf_position_vector(source.spice_id, et_tx)
+
+        # Retrieve GCRF position of station
+        xsta_gcrf_rx1 = obs.station.location(obs.tstamps, frame="icrf")
+
+        # Retrieve BCRF state of Earth at RX epochs
+        rx1 = rx_station
+        et_rx1 = utils.get_ephemeris_time_from_epoch(rx1)
+        searth_bcrf_rx1 = astro.get_icrf_state_vector("earth", et_rx1)
+        xearth_bcrf_rx1 = searth_bcrf_rx1[:, :3]
+        vearth_bcrf_rx1 = searth_bcrf_rx1[:, 3:]
+
+        # Retrieve GM and BCRF position at RX for massive bodies
+        _bodies: list = self.exp.setup.internal["lt_correction_bodies"]
+        bodies = [bi for bi in _bodies if bi != "earth"]
+        bodies_gm = np.array(
+            [astro.get_body_gravitational_parameter(body) for body in bodies]
+        )
+        xbodies_bcrf_rx1 = np.array(
+            [astro.get_icrf_position_vector(body, et_rx1) for body in bodies]
+        )
+
+        # Calculate external gravitational potential at geocenter
+        U_geocenter = astro.calculate_newtonian_potential_from_bcrf_positions(
+            massive_bodies_gm=bodies_gm,
+            x_target_bcrf=xearth_bcrf_rx1,
+            x_bodies_bcrf=xbodies_bcrf_rx1,
+        )
+
+        # Transform GCRF position of station to BCRF
+        xsta_bcrf_rx1 = astro.transform_position_from_gcrf_to_bcrf(
+            xsta_gcrf_rx1, xearth_bcrf_rx1, vearth_bcrf_rx1, U_geocenter
+        )
+
+        # Calculate light-time between source and geocenter
+        iter_max = self.exp.setup.internal["lt_max_iterations"]
+        precision = float(self.exp.setup.internal["lt_precision"])
+        lt_np1 = astro.light_time_from_tx_epoch(
+            tdb_tx=tx.tdb,
+            xsrc_bcrf_tx=xsrc_bcrf_tx,
+            receiver_id="earth",
+            perturbing_bodies=bodies,
+            precision=precision,
+            max_iterations=iter_max,
+        )
+
+        # Calculate BCRF position of phase center at RX2
+        rx2 = tx.tdb + lt_np1
+        et_rx2 = utils.get_ephemeris_time_from_epoch(rx2)
+        xphc_bcrf_rx2 = astro.get_icrf_position_vector("earth", et_rx2)
+
+        # Calculate BCRF position of massive bodies at RX2 and TX
+        xbodies_bcrf_rx2 = np.array(
+            [astro.get_icrf_position_vector(body, et_rx2) for body in bodies]
+        )
+        xbodies_bcrf_tx = np.array(
+            [astro.get_icrf_position_vector(body, et_tx) for body in bodies]
+        )
+
+        # Calculate post-Newtonian near-field effect
+        post_newtonian_effects = astro.post_newtonian_near_field_delay(
+            bodies_gm,
+            xsta_bcrf_rx1,
+            xphc_bcrf_rx2,
+            xsrc_bcrf_tx,
+            xbodies_bcrf_rx1,
+            xbodies_bcrf_rx2,
+            xbodies_bcrf_tx,
+            consider_bending=False,
+        )
+
+        # Calculate delay in TT
+        return astro.calculate_sekido_fukushima_near_field_delay(
+            bodies_gm,
+            xsta_bcrf_rx1,
+            xsta_gcrf_rx1,
+            searth_bcrf_rx1,
+            xsrc_bcrf_tx,
+            xbodies_bcrf_rx1,
+            post_newtonian_effects,
+        )
 
     def calculate_farfield(self, obs: "Observation") -> np.ndarray:
         """Calculate geometric delay for a far-field source
@@ -276,7 +360,7 @@ class Geometric(Delay):
         if isinstance(obs.source, FarFieldSource):
             return self.calculate_farfield(obs)
         elif isinstance(obs.source, NearFieldSource):
-            return self.calculate_nearfield(obs)
+            return self.calculate_nearfield_sekido_fukushima(obs)
         else:
             log.error(
                 "Failed to calculate geometric delay: Invalid source type"
