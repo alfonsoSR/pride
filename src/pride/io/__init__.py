@@ -1,8 +1,13 @@
 from .vex import Vex
 from .setup import Setup
-from .resources import internal_file, load_catalog
+from .resources import internal_catalog_path, internal_parameter, load_catalog
 from .spice import get_target_information, SpiceKernelManager
-from .del_interface import DelFile
+from .del_interface import (
+    DelFileGenerator,
+    DelContents,
+    ScanData,
+    DelFileInterface,
+)
 from .ramping_data import load_ramping_data, get_path_to_ramping_data_file
 from .station_catalogs import (
     load_station_coordinates_from_catalog,
@@ -18,11 +23,15 @@ from .antenna_parameters import AntennaParameters
 __all__ = [
     "Vex",
     "Setup",
-    "internal_file",
+    "internal_parameter",
+    "internal_catalog_path",
     "load_catalog",
     "SpiceKernelManager",
     "get_target_information",
-    "DelFile",
+    "DelFileGenerator",
+    "DelContents",
+    "ScanData",
+    "DelFileInterface",
     "load_ramping_data",
     "get_path_to_ramping_data_file",
     "load_station_coordinates_from_catalog",

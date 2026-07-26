@@ -11,6 +11,13 @@ from pathlib import Path
 from pride.logger import log
 import os
 from scipy import interpolate
+import numpy as np
+
+DATA_DIRECTORY: Path = Path(__file__).parent.parent / "data"
+"""Path to directory with test data"""
+
+TOL: float = 3e-16
+"""Tolerance for comparisons with numpy"""
 
 
 @pytest.mark.parametrize(
@@ -103,56 +110,139 @@ def test_download_and_decompress(
 
 @pytest.mark.parametrize(
     [
-        "epoch",
-        "expected_radius",
-        "expected_height",
-        "expected_tec_maps",
-        "content_validation_tuple",
+        "ionex_file",
+        "initial_tec_epoch",
+        "final_tec_epoch",
+        "interval",
+        "number_of_maps",
+        "mapping_function",
+        "elevation_cutoff",
+        "ref_rearth",
+        "ref_height",
+        "latitude_grid",
+        "longitude_grid",
     ],
     [
         (
-            time.Time("2022-11-27T00:00:00", scale="utc"),
+            "ionex_files/new_ionex.INX",
+            "2023-10-19T00:00:00",
+            "2023-10-20T00:00:00",
+            7200,
+            13,
+            "  COSZ",
+            0.0,
             6371.0,
             450.0,
-            13,
-            (-175.0, 87.5, 82),
+            np.arange(87.5, -89.0, -2.5),
+            np.arange(-180.0, 181.0, 5.0),
         ),
         (
-            time.Time("2022-11-26T00:00:00", scale="utc"),
+            "ionex_files/old_ionex.13i",
+            "2013-12-28T00:00:00",
+            "2013-12-29T00:00:00",
+            7200,
+            13,
+            "  COSZ",
+            0.0,
             6371.0,
             450.0,
-            13,
-            (-175.0, 87.5, 69),
+            np.arange(87.5, -89.0, -2.5),
+            np.arange(-180.0, 181.0, 5.0),
         ),
     ],
-    ids=[
-        "New format",
-        "Old format",
-    ],
 )
-def test_ionex_interface(
-    epoch: "time.Time",
-    expected_height: float,
-    expected_radius: float,
-    expected_tec_maps: int,
-    content_validation_tuple: tuple[float, float, int],
-    tmp_path: Path,
+def test_ionex_metadata(
+    ionex_file: str,
+    initial_tec_epoch: str,
+    final_tec_epoch: str,
+    interval: int,
+    number_of_maps: int,
+    mapping_function: str,
+    elevation_cutoff: float,
+    ref_rearth: float,
+    ref_height: float,
+    latitude_grid: np.ndarray,
+    longitude_grid: np.ndarray,
 ) -> None:
 
-    # Initialize interface for file
-    ionex_file = download_ionex_file_for_date(epoch, tmp_path)
-    ionex = IonexInterface(ionex_file)
+    # Generate interface for file
+    ionex = IonexInterface(DATA_DIRECTORY / ionex_file)
 
-    tec_maps, ref_height, ref_rearth = ionex.read_data_from_ionex_file()
-    assert isinstance(tec_maps, list)
-    assert isinstance(tec_maps[0], interpolate.RegularGridInterpolator)
-    assert isinstance(ref_height, float)
-    assert isinstance(ref_rearth, float)
-    assert ref_rearth == expected_radius
-    assert ref_height == expected_height
-    assert len(tec_maps) == expected_tec_maps
+    # Check metadata against expected values
+    assert ionex.initial_tec_epoch == initial_tec_epoch
+    assert ionex.final_tec_epoch == final_tec_epoch
+    assert ionex.tec_interval == interval
+    assert ionex.number_of_tec_maps == number_of_maps
+    assert ionex.mapping_function == mapping_function
+    assert ionex.elevation_cutoff == elevation_cutoff
+    assert ionex.ref_rearth == ref_rearth
+    assert ionex.ref_height == ref_height
+    assert np.allclose(ionex.latitude_grid, latitude_grid, rtol=TOL)
+    assert np.allclose(ionex.longitude_grid, longitude_grid, rtol=TOL)
 
-    lon, lat, expected_tec = content_validation_tuple
-    assert tec_maps[0]([lon, lat]) == expected_tec
+    return None
+
+
+@pytest.mark.parametrize(
+    [
+        "ionex_file",
+        "expected_number_of_elements",
+        "expected_start_and_end",
+        "expected_epoch_lat_lon_tec_combinations",
+    ],
+    [
+        (
+            "ionex_files/new_ionex.INX",
+            13,
+            (
+                time.Time("2023-10-19T00:00:00"),
+                time.Time("2023-10-20T00:00:00"),
+            ),
+            [(time.Time("2023-10-19T02:00:00"), 75.0, -160, 275)],
+        ),
+        (
+            "ionex_files/old_ionex.13i",
+            13,
+            (
+                time.Time("2013-12-28T00:00:00"),
+                time.Time("2013-12-29T00:00:00"),
+            ),
+            [(time.Time("2013-12-28T06:00:00"), -25.0, 150, 527)],
+        ),
+    ],
+)
+def test_read_tec_maps(
+    ionex_file: str,
+    expected_number_of_elements: int,
+    expected_start_and_end: tuple[time.Time, time.Time],
+    expected_epoch_lat_lon_tec_combinations: list[
+        tuple[time.Time, float, float, float]
+    ],
+) -> None:
+
+    # Initialize ionex interface for chosen file
+    ionex_path = DATA_DIRECTORY / ionex_file
+    ionex = IonexInterface(ionex_path)
+
+    # Read data from file
+    tec_maps = ionex.generate_tec_map_interpolators()
+
+    # Check it is a dictionary with time.Time keys and interpolators as values
+    assert isinstance(tec_maps, dict)
+    for key, val in tec_maps.items():
+        assert isinstance(key, time.Time)
+        assert isinstance(val, interpolate.RegularGridInterpolator)
+
+    # Ensure that the dictionary has the expected number of elements
+    assert len(tec_maps.keys()) == expected_number_of_elements
+
+    # Check initial and final epochs
+    tec_epochs = list(tec_maps.keys())
+    assert tec_epochs[0] == expected_start_and_end[0]
+    assert tec_epochs[-1] == expected_start_and_end[1]
+
+    # Check some TEC values
+    for epoch, lat, lon, tec in expected_epoch_lat_lon_tec_combinations:
+        assert tec_maps[epoch]([lon, lat]) == tec
 
     return None

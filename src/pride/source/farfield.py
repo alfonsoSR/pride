@@ -2,9 +2,9 @@ from typing import TYPE_CHECKING
 from astropy import coordinates, time
 import numpy as np
 import spiceypy as spice
-from ..constants import J2000
+from ..constants import J2000, CLIGHT
 from .core import Source
-from .. import io
+from .. import utils, astro
 
 if TYPE_CHECKING:
     from ..experiment import Experiment, Observation
@@ -79,18 +79,18 @@ class FarFieldSource(Source):
         Source: Spherical Astrometry (сферическая астрометрия), Zharov (2006) - Eq 5.105 [Available online as of 01/2025]
         """
 
-        clight = spice.clight() * 1e3
-
         # Convert RX to ephemeris time
-        et_rx: np.ndarray = (
-            (obs.tstamps.tdb - J2000.tdb).to("s").value  # type: ignore
-        )
+        et_rx = utils.get_ephemeris_time_from_epoch(obs.tstamps)
+        # et_rx: np.ndarray = (
+        #     (obs.tstamps.tdb - J2000.tdb).to("s").value  # type: ignore
+        # )
 
         # Calculate BCRF velocity of station at RX
-        searth_bcrf_rx = (
-            np.array(spice.spkezr("EARTH", et_rx, "J2000", "NONE", "SSB")[0])
-            * 1e3
-        )
+        searth_bcrf_rx = astro.get_icrf_state_vector("earth", et_rx)
+        # searth_bcrf_rx = (
+        #     np.array(spice.spkezr("EARTH", et_rx, "J2000", "NONE", "SSB")[0])
+        #     * 1e3
+        # )
         vearth_bcrf_rx = searth_bcrf_rx[:, 3:]
         vsta_bcrf_rx = vearth_bcrf_rx + obs.station.velocity(
             obs.tstamps, frame="icrf"
@@ -102,7 +102,7 @@ class FarFieldSource(Source):
         s0 = self.observed_ks[None, :]
 
         # Aberrated pointing direction [Equation 5.105 from Zharov (2006)]
-        v_c = v_mag / clight
+        v_c = v_mag / CLIGHT
         gamma = 1.0 / np.sqrt(1.0 - v_c * v_c)
         s0_dot_n = np.sum(s0 * v_unit, axis=-1)[:, None]
         s_aber = (

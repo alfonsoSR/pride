@@ -20,7 +20,17 @@ class EOP:
         bulletin: Literal["A", "B"],
         initial_epoch: time.Time,
         final_epoch: time.Time,
+        margin_in_days: int = 8,
     ) -> None:
+        """Constructor for EOP interface class
+
+        .. Note:: You can find more information about EOP bulletins at the API documentation of this module
+
+        :param bulletin: EOP bulletin to use [A or B]
+        :param initial_epoch: Epoch from which to load EOPs
+        :param final_epoch: Epoch until which to load EOPs
+        :param margin_in_days: Number of days by which to augment the time range defined by the initial and final epochs.
+        """
 
         # Select EOP bulletin
         match bulletin:
@@ -34,32 +44,46 @@ class EOP:
                 )
                 exit(1)
 
-        # Calculate range of MJDs
-        initial_mjd = (initial_epoch.mjd // 1) - 8  # type: ignore
-        final_mjd = (final_epoch.mjd // 1) + 8  # type: ignore
-        idx = (
+        # Augment initial and final epochs with margin
+        initial_mjd = (initial_epoch.mjd // 1) - margin_in_days  # type: ignore
+        final_mjd = (final_epoch.mjd // 1) + margin_in_days  # type: ignore
+        self.__mjd_range = (initial_mjd, final_mjd)
+
+        # Find entries of EOP table within the time range
+        eop_table_mask: np.ndarray = (
             np.argwhere(
-                (eop_table["MJD"].data >= initial_mjd)
-                & (eop_table["MJD"].data <= final_mjd)
+                (eop_table["MJD"].data >= initial_mjd)  # type: ignore
+                & (eop_table["MJD"].data <= final_mjd)  # type: ignore
             )
             .ravel()
             .astype(int)
         )
-        mjd_list = eop_table["MJD"][idx].value
-        self.__mjd_range = (initial_mjd, final_mjd)
+        assert isinstance(eop_table_mask, np.ndarray)
+
+        # Get MJD for table entries in the time range
+        relevant_mjds = eop_table["MJD"][eop_table_mask].data  # type: ignore
 
         # EOPs at integer epochs
         self.__eops_dict = {
-            "xp": interpolate.interp1d(mjd_list, eop_table["PM_x"][idx].value),
-            "yp": interpolate.interp1d(mjd_list, eop_table["PM_y"][idx].value),
+            "xp": interpolate.interp1d(
+                relevant_mjds,
+                eop_table["PM_x"][eop_table_mask].value,  # type: ignore
+            ),
+            "yp": interpolate.interp1d(
+                relevant_mjds,
+                eop_table["PM_y"][eop_table_mask].value,  # type: ignore
+            ),
             "ut1_utc": interpolate.interp1d(
-                mjd_list, eop_table["UT1_UTC"][idx].value
+                relevant_mjds,
+                eop_table["UT1_UTC"][eop_table_mask].value,  # type: ignore
             ),
             "dx": interpolate.interp1d(
-                mjd_list, eop_table["dX_2000A"][idx].value
+                relevant_mjds,
+                eop_table["dX_2000A"][eop_table_mask].value,  # type: ignore
             ),
             "dy": interpolate.interp1d(
-                mjd_list, eop_table["dY_2000A"][idx].value
+                relevant_mjds,
+                eop_table["dY_2000A"][eop_table_mask].value,  # type: ignore
             ),
         }
 
@@ -85,6 +109,10 @@ class EOP:
 
     @staticmethod
     def from_experiment(experiment: "Experiment") -> "EOP":
+
+        raise DeprecationWarning(
+            "Initializing EOPs from experiment is deprecated"
+        )
         return EOP(
             experiment.setup.internal["eop_bulletin"],
             experiment.initial_epoch,

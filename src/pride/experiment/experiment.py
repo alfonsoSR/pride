@@ -11,7 +11,7 @@ from ..coordinates import EOP
 from ..displacements import DISPLACEMENT_MODELS
 from ..delays import DELAY_MODELS
 from ..source import Source, NearFieldSource, FarFieldSource
-from .station import Station
+from ..station.core import Station
 from .baseline import Baseline
 from .observation import Observation
 import numpy as np
@@ -56,7 +56,12 @@ class Experiment:
         self.clock_offsets = self.clock_parameters  # Backwards compatibility
 
         # EOPs: For transformations between ITRF and ICRF
-        self.eops = EOP.from_experiment(self)
+        # Only used in  Baseline.update_with_observations
+        self.eops = EOP(
+            bulletin=self.setup.internal["eop_bulletin"],
+            initial_epoch=self.initial_epoch,
+            final_epoch=self.final_epoch,
+        )
 
         # Load target information
         self.target = io.get_target_information(self.setup.general["target"])
@@ -74,8 +79,8 @@ class Experiment:
                 "Using a station as phase center is currently not supported"
             )
             exit(1)
-        self.phase_center = Station.from_experiment(
-            self.setup.general["phase_center"], "00", self
+        self.phase_center = Station(
+            self.setup.general["phase_center"], "00", True, None
         )
 
         # Initialize baselines
@@ -84,9 +89,11 @@ class Experiment:
         )
 
         # Initialize delay and displacement models
-        self.requires_spice = False
+        self.requires_spice = True
         self.displacement_models = self.initialize_displacement_models()
         self.delay_models = self.initialize_delay_models()
+
+        log.info(f"Experiment {self.name} successfully initialized")
 
         return None
 
@@ -96,6 +103,8 @@ class Experiment:
         :param target: Name of the target
         :return: Path to the metakernel
         """
+
+        log.info(f"Setting up SPICE kernels")
 
         # Initialize SPICE kernel manager
         kernel_manager = io.SpiceKernelManager(
@@ -108,6 +117,8 @@ class Experiment:
 
         # Ensure SPICE kernels listed in the metakernel
         kernel_manager.ensure_kernels(metakernel)
+
+        log.info("All required kernels present")
 
         return metakernel
 
@@ -167,8 +178,6 @@ class Experiment:
                     )
                     exit(1)
                 displacement_models.append(DISPLACEMENT_MODELS[displacement]())
-                if DISPLACEMENT_MODELS[displacement].requires_spice:
-                    self.requires_spice = True
 
         log.info("Displacement models successfully initialized")
 
@@ -193,8 +202,6 @@ class Experiment:
                     )
                     exit(1)
                 _delay_models.append(DELAY_MODELS[delay_id](self))
-                if DELAY_MODELS[delay_id].requires_spice:
-                    self.requires_spice = True
 
         log.info("Delay models successfully initialized")
 
@@ -296,44 +303,59 @@ class Experiment:
         :return baselines: List of Baseline objects populated with observations.
         """
 
-        log.info("Initializing baselines")
-
         # Load station IDs and names from VEX file
-        stations_dictionary = vex.load_station_ids_and_names(ignored_stations)
+        station_catalog = vex.load_station_ids_and_names(ignored_stations)
 
-        # Initialize dictionary of empty baselines (without observations)
-        log.info("Initializing empty baselines")
-        baselines_dictionary: dict[str, "Baseline"] = {
-            station_id: Baseline(
-                center=self.phase_center,
-                station=Station.from_experiment(station_name, station_id, self),
+        # Initialize Station objects
+        log.info("Initializing experiment stations")
+        stations_dictionary: dict[str, "Station"] = {}
+        for station_id, station_name in station_catalog.items():
+            stations_dictionary[station_id] = Station(
+                station_name=station_name,
+                station_id=station_id,
+                is_phase_center=False,
+                clock_parameters=self.clock_parameters[station_id],
             )
-            for station_id, station_name in stations_dictionary.items()
-        }
 
         # Collect observation bands and timestamps
+        log.info("Grouping scan data per observation")
         observation_bands, observation_tstamps = (
             self.collect_observation_bands_and_timestamps(vex)
         )
 
-        # Update baselines with observations
-        log.info("Updating baselines with observations")
-        for baseline_id in observation_bands:
-            for source_id in observation_bands[baseline_id]:
+        # Create baselines
+        log.info("Initializing baselines")
+        experiment_baselines: list["Baseline"] = []
+        for station_id in observation_bands:
+
+            # Initialize container with observations for this station
+            station_observations: list["Observation"] = []
+
+            # Create an Observation object for each observed source
+            for source_id in observation_bands[station_id]:
 
                 # Create observation object
-                _observation = Observation.from_experiment(
-                    baselines_dictionary[baseline_id],
-                    self.sources[source_id],
-                    observation_bands[baseline_id][source_id],
-                    observation_tstamps[baseline_id][source_id],
-                    self,
+                observation = Observation(
+                    station=stations_dictionary[station_id],
+                    source=self.sources[source_id],
+                    band=observation_bands[station_id][source_id],
+                    tstamps=observation_tstamps[station_id][source_id],
                 )
 
-                # Update baseline with observation
-                baselines_dictionary[baseline_id].add_observation(_observation)
+                # Add observation to list of observations for station
+                station_observations.append(observation)
 
-        return list(baselines_dictionary.values())
+            # Create baseline object with observations
+            baseline = Baseline(
+                center=self.phase_center,
+                station=stations_dictionary[station_id],
+                observations=station_observations,
+            )
+
+            # Add baseline to list
+            experiment_baselines.append(baseline)
+
+        return experiment_baselines
 
     def load_clock_offsets(self):
         """Load clock offset data from VEX"""
@@ -358,27 +380,34 @@ class Experiment:
         return None
 
     def save_output(self) -> None:
+
         log.warning("The save_output method should be refactored!")
 
         # Initialize output directory
         outdir = Path(self.setup.general["output_directory"]).resolve()
         outdir.mkdir(parents=True, exist_ok=True)
 
+        log.info(f"Saving output in {outdir}")
+
         # Output files and observations
         observations: dict[tuple[str, str], "Observation"] = {}
-        output_files: dict[str, "io.DelFile"] = {}
+        output_files: dict[str, "io.DelFileGenerator"] = {}
         for baseline in self.baselines:
 
             # Station code
-            code = baseline.station.id.title()
+            station_id = baseline.station.id.title()
 
             # Initialize output file for observation
-            output_files[code] = io.DelFile(outdir / f"{self.name}_{code}.del")
-            output_files[code].create_file(code)
+            output_files[station_id] = io.DelFileGenerator(
+                outdir / f"{self.name}_{station_id}.del"
+            )
+            output_files[station_id].add_header(station_id)
 
             # Add observations to dictionary
             for observation in baseline.observations:
-                observations[(code, observation.source.name)] = observation
+                observations[(station_id, observation.source.name)] = (
+                    observation
+                )
 
         # Main loop
         sorted_scans = sorted([s for s in self.__vex.experiment_scans_ids])
@@ -455,6 +484,8 @@ class Experiment:
                 data = np.array(
                     [mjd2, zero, zero, zero, scan_delays, zero, zero + 1.0]
                 ).T
-                output_files[station_id].add_scan(scan_source_id, mjd1, data)
+                output_files[station_id].add_scan(
+                    scan_id, scan_source_id, mjd1, data
+                )
 
         return None

@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from ...experiment.observation import Observation
 
 
+TURNAROUND_RATIO = io.internal_parameter("tr_ratio")
+
+
 class Ionospheric(Delay):
     """Ionospheric delay
 
@@ -22,18 +25,6 @@ class Ionospheric(Delay):
     - BRIEF DESCRIPTION OF THE MODEL AND SOURCE
     - DESCRIPTION OF REQUIRED RESOURCES AND KEYS
     """
-
-    name = "Ionospheric"
-    etc = {
-        "url": "https://cddis.nasa.gov/archive/gps/products/ionex",
-        "new_format_week": 2238,
-        "gps_week_ref": time.Time("1980-01-06T00:00:00", scale="utc"),
-        "model": "igs",
-        "ftp_server": "gdc.cddis.eosdis.nasa.gov",
-        "solution_type": "FIN",
-    }
-    requires_spice = False
-    station_specific = True
 
     def ensure_resources(self) -> None:
 
@@ -68,11 +59,10 @@ class Ionospheric(Delay):
 
     def load_resources(self) -> dict[str, Any]:
 
-        log.debug(f"Loading resources for {self.name} delay")
-
         # Generate TEC maps
-        tec_epochs = time.Time([key[0] for key in self.resources["coverage"]])
-        tec_grid_interpolators: list[interpolate.RegularGridInterpolator] = []
+        tec_grid_interpolators: dict[
+            time.Time, interpolate.RegularGridInterpolator
+        ] = {}
 
         # Reference values for Earth radius and ionospheric height
         reference_earth_radius: float = NotImplemented
@@ -83,33 +73,31 @@ class Ionospheric(Delay):
 
             # Read IONEX file
             ionex_content = io.IonexInterface(source)
-            tec_interpolators, ref_height, ref_rearth = (
-                ionex_content.read_data_from_ionex_file()
-            )
+            tec_interpolators = ionex_content.generate_tec_map_interpolators()
 
             # Update reference Earth radius or check consistency
             if reference_earth_radius is NotImplemented:
-                reference_earth_radius = ref_rearth
-            elif reference_earth_radius != ref_rearth:
+                reference_earth_radius = ionex_content.ref_rearth
+            elif reference_earth_radius != ionex_content.ref_rearth:
                 log.error(
                     f"Failed to load TEC maps: "
-                    "Inconsistent reference Earth radius accross files"
+                    "Inconsistent reference Earth radius across files"
                 )
                 exit(1)
 
             # Update reference ionospheric height or check consistency
             if reference_ionospheric_height is NotImplemented:
-                reference_ionospheric_height = ref_height
-            elif reference_ionospheric_height != ref_height:
+                reference_ionospheric_height = ionex_content.ref_height
+            elif reference_ionospheric_height != ionex_content.ref_height:
                 log.error(
                     f"Failed to load TEC maps: "
-                    "Inconsistent reference ionospheric height accross files"
+                    "Inconsistent reference ionospheric height across files"
                 )
                 exit(1)
 
             # Update list of TEC map interpolators
-            for tec_interpolator in tec_interpolators:
-                tec_grid_interpolators.append(tec_interpolator)
+            for epoch, interpolator in tec_interpolators.items():
+                tec_grid_interpolators[epoch] = interpolator
 
         # Initialize resources dictionary with reference values
         resources: dict[str, Any] = {
@@ -117,33 +105,44 @@ class Ionospheric(Delay):
             "ref_rearth": reference_earth_radius,
         }
 
+        # Group TEC epochs into single time.Time object
+        tec_epochs = time.Time(list(tec_grid_interpolators.keys()))
+
         # Generate a 1D TEC interpolator for each station
         for baseline in self.exp.baselines:
 
             # Station latitude and longitude for each coverage epoch
+            # TODO: REPLACE WITH GEOCENTRIC COORDINATES!!
             coords = coordinates.EarthLocation(
                 *baseline.station.location(tec_epochs, frame="itrf").T,
                 unit="m",
             ).to_geodetic("GRS80")
-            lat: np.ndarray = coords.lat.deg  # type: ignore
-            lon: np.ndarray = coords.lon.deg  # type: ignore
+            station_latitudes: np.ndarray = coords.lat.deg  # type: ignore
+            station_longitudes: np.ndarray = coords.lon.deg  # type: ignore
 
             # Get TEC at station coordinates for each epoch in coverage
-            tec_at_station_coordinates: list[float] = [
-                float(tec_grid_interpolator([lon, lat])[0])
-                for tec_grid_interpolator, lon, lat in zip(
-                    tec_grid_interpolators, lon, lat
+            station_local_tec: list[float] = [
+                float(tec_interpolator([lon, lat])[0])
+                for tec_interpolator, lon, lat in zip(
+                    tec_grid_interpolators.values(),
+                    station_longitudes,
+                    station_latitudes,
                 )
             ]
 
-            # Generate a 1D interpolator with the TEC at station coordinates
-            # as function of the observation epoch
-            interp_type: str = (
-                "linear" if len(tec_at_station_coordinates) <= 3 else "cubic"
-            )
+            # Interpolate local TEC as function of time
             resources[baseline.station.name] = interpolate.interp1d(
-                tec_epochs.mjd, tec_at_station_coordinates, kind=interp_type
+                tec_epochs.mjd, station_local_tec, kind="cubic"
             )
+
+            # # Generate a 1D interpolator with the TEC at station coordinates
+            # # as function of the observation epoch
+            # interp_type: str = (
+            #     "linear" if len(tec_at_station_coordinates) <= 3 else "cubic"
+            # )
+            # resources[baseline.station.name] = interpolate.interp1d(
+            #     tec_epochs.mjd, tec_at_station_coordinates, kind=interp_type
+            # )
 
         return resources
 
@@ -185,7 +184,7 @@ class Ionospheric(Delay):
                 df0 = np.sum(np.where(mask_3way, three_way["df"], 0), axis=1)
                 t0 = np.sum(np.where(mask_3way, three_way["t0"].jd, 0), axis=1)
                 dt = time.TimeDelta(uplink_tx.jd - t0, format="jd").to("s").value  # type: ignore
-                freq += (f0 + df0 * dt) * obs.exp.setup.internal["tr_ratio"]
+                freq += (f0 + df0 * dt) * TURNAROUND_RATIO
 
                 # Check for lack of coverage
                 holes = np.sum(mask_3way, axis=1) == 0

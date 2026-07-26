@@ -24,7 +24,8 @@ jobs:
       - name: Set fortran compiler on macOS
         if: runner.os == 'macOS'
         run: |
-          echo "PATH=$(brew --prefix gfortran)/bin:$PATH" >> $GITHUB_ENV
+          brew install gfortran
+          export PATH="$(brew --prefix gfortran)/bin:$PATH" >> $GITHUB_ENV
 
       - name: Install package
         run: |

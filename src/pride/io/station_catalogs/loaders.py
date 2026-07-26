@@ -1,14 +1,16 @@
-from ..resources import internal_file, load_catalog
+from ..resources import internal_catalog_path, load_catalog
 import numpy as np
 from pathlib import Path
 from ...logger import log
 from astropy import time
+import yaml
 
 # Paths to relevant internal catalogs
-INTERNAL_CATALOGS = load_catalog("config.yaml")["Catalogues"]
-ALTERNATIVE_STATION_NAMES = load_catalog("station_names.yaml")
-STATION_COORDINATES = internal_file(INTERNAL_CATALOGS["station_positions"])
-STATION_VELOCITIES = internal_file(INTERNAL_CATALOGS["station_velocities"])
+ALTERNATIVE_STATION_NAMES = load_catalog("alternative_station_names")
+STATION_COORDINATES: Path = internal_catalog_path("station_positions")
+STATION_VELOCITIES: Path = internal_catalog_path("station_velocities")
+# STATION_COORDINATES = internal_file(INTERNAL_CATALOGS["station_positions"])
+# STATION_VELOCITIES = internal_file(INTERNAL_CATALOGS["station_velocities"])
 
 
 def load_reference_epoch_for_station_catalog() -> "time.Time":

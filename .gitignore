@@ -1,11 +1,13 @@
 *cache*
 *egg-info*
 .DS_Store
+.vscode
 
 # To be removed in the future
 doc
 src/pride/displacements/old.py
 dev
+validation
 
 # Compiled extension modules
 *.so

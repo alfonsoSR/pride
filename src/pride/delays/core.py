@@ -11,21 +11,16 @@ class Delay(metaclass=ABCMeta):
     """Base class for implementation of delay models
 
     :param name: Unique name that identifies the delay model
-    :param etc: Configuration parameters not meant to be adjusted by users
-    :param requires_spice: Whether the delay model requires SPICE kernels
-    :param station_specific: Whether the resources required to calculate the delay are station-specific
     :param exp: Experiment object
     :param config: Section of the configuration file associated with the delay
     :param resources: Private container to be used internally when loading resources
     """
 
-    name: str = NotImplemented
-    etc: dict[str, Any] = NotImplemented
-    requires_spice: bool = NotImplemented
-    station_specific: bool = NotImplemented
-
     def __init__(self, exp: "Experiment") -> None:
         """Initialize delay model from experiment"""
+
+        # Get name from name of the class
+        self.name = type(self).__name__
 
         self.exp = exp
         self.config: dict[str, Any] = self.exp.setup.delays[self.name]
@@ -37,6 +32,7 @@ class Delay(metaclass=ABCMeta):
         self.ensure_resources()
 
         # Load resources
+        log.debug(f"Loading resources for {self.name} delay")
         self.loaded_resources = self.load_resources()
 
         return None
@@ -49,3 +45,11 @@ class Delay(metaclass=ABCMeta):
 
     @abstractmethod
     def calculate(self, obs: "Observation") -> Any: ...
+
+    def calculate_with_logging(self, obs: "Observation") -> Any:
+
+        log.debug(
+            f"Calculating {self.name} delay of {obs.source.name} from "
+            f"{obs.station.name}"
+        )
+        return self.calculate(obs)
