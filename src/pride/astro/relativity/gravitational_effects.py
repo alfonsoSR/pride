@@ -161,11 +161,26 @@ def calculate_sekido_fukushima_near_field_delay(
     s_earth_bcrf_rx: np.ndarray,
     x_src_bcrf_tx: np.ndarray,
     x_bodies_bcrf_rx: np.ndarray,
-    post_newtonian_correction: np.ndarray,
+    relativistic_correction: np.ndarray,
 ) -> np.ndarray:
-    """Near-field, geometric delay between station and geocenter
+    """Near-field geometric delay - Sekido & Fukushima
 
-    Calculates the geometric delay between the times of arrival of a signal travelling from a near-field radio source to an observer and the geocenter in TT scale following the mathematical model in Sekido and Fukusima 2006.
+    This function calculates the geometric delay between the times of arrival of a signal travelling from a near-field source to an observer and the geocenter using the mathematical model derived in Sekido & Fukushima 2006.
+
+    The delay is returned in TT scale, and represents the difference between the time of arrival to the geocenter and the one to the station, meaning that it is positive when the station is closer to the source.
+
+    In the description of the arguments, M is the number of **external** massive bodies, N is the number of epochs, and the tuples at the end of the argument names indicate the expected shape of the arrays.
+
+    Source: Sekido, M., & Fukushima, T. (2006). A VLBI Delay Model for Radio Sources at a Finite Distance. Journal of Geodesy, 80(3), 137–149. https://doi.org/10.1007/s00190-006-0035-y
+
+    :param bodies_gm: Array with GM of all the external massive bodies to be considered when calculating the gravitational potential at the geocenter. It should never contain the GM of the Earth. (M,)
+    :param x_obs_bcrf_rx: BCRF position of the observer (station) at RX epochs. (N, 3)
+    :param x_obs_gcrf_rx: GCRF position of the observer (station) at RX epochs. (N, 3)
+    :param s_earth_bcrf_rx: BCRF state (i.e. position and velocity) of the geocenter at RX epochs. (N, 6).
+    :param x_src_bcrf_tx: BCRF position of the source at TX epochs. (N, 3)
+    :param x_bodies_bcrf_rx: BCRF position of the external massive bodies at RX epochs. (M, N, 3)
+    :param relativistic_correction: Pre-computed relativistic corrections to be applied when calculating the near=field delay. (N,)
+    :return: Estimated geometric delay between the geocenter and the observer (station) in TT scale. (N,)
     """
 
     # Separate position and velocity of Earth in BCRF at RX
@@ -220,7 +235,7 @@ def calculate_sekido_fukushima_near_field_delay(
 
     # Return delay in TT
     return (
-        -(numerator_term_1 + numerator_term_2 + post_newtonian_correction)
+        -(numerator_term_1 + numerator_term_2 + relativistic_correction)
         / denominator
     )
 
@@ -233,11 +248,26 @@ def calculate_duev_near_field_delay(
     x_bodies_bcrf_rx: np.ndarray,
     relativistic_correction: np.ndarray,
 ) -> np.ndarray:
-    """Near-field, geometric delay between station and geocenter
+    """Near-field geometric delay - Duev
 
-    Calculates the geometric delay between the times of arrival of a signal travelling from a near-field radio source to an observer and the geocenter in TT scale using the mathematical model in Duev 2012.
+    This function calculates the geometric delay between the times of arrival of a signal travelling from a near-field source to an observer and the geocenter using the mathematical model derived in Duev 2012.
 
-    NOTE: With respect to the formulation in the paper, the denominator is equal to zero because the second ground station is the geocenter
+    The delay is returned in TT scale and represents the difference between the time of arrival to the geocenter and the one to the station, meaning that it is positive when the station is closer to the source.
+
+    In the description of the arguments, M is the number of external massive bodies, N is the number of epochs, and the tuples at the end of the argument names indicate the expected shape of the arrays.
+
+    .. warning::
+        The formulation presented here matches the implementation in the original version of this library, which slightly differs from the one presented in Duev 2012 in that the latter does not include the relativistic correction when transforming the delay to TT
+
+    Source: Duev, D. A., Molera Calvés, G., Pogrebenko, S. V., Gurvits, L. I., Cimó, G., & Bocanegra Bahamon, T. (2012). Spacecraft VLBI and Doppler tracking: Algorithms and implementation. Astronomy & Astrophysics, 541, A43. https://doi.org/10.1051/0004-6361/201218885
+
+    :param reference_delay: Pre-computed difference between times of arrival of the signal to the geocenter and the observer (station), in TDB scale. (N,)
+    :param bodies_gm: Array with GM of all the external massive bodies to be considered when calculating the gravitational potential at the geocenter. It should not contain the Earth. (M,)
+    :param x_obs_gcrf_rx: GCRF position vector of the observer (station) at RX epochs. (N, 3)
+    :param s_earth_bcrf_rx: BCRF state vector (i.e. position and velocity) of the geocenter at RX epochs. (N, 6)
+    :param x_bodies_bcrf_rx: BCRF position vector of the external massive bodies at RX epochs. (M, N, 3)
+    :param relativistic_correction: Pre-computed relativistic corrections to be applied when calculating the near=field delay. (N,)
+    :return: Estimated geometric delay between the geocenter and the observer (station) in TT scale. (N,)
     """
 
     # Separate position and velocity of Earth
