@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any
 from ...logger import log
 from astropy import time
 import numpy as np
-from nastro import graphics as ng
 
 from ...source import FarFieldSource, NearFieldSource
 from ...constants import L_C, CLIGHT
