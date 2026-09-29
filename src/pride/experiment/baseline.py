@@ -34,15 +34,21 @@ class Baseline:
 
         log.debug(f"Initializing baseline: {station.name}")
 
-        # Merge timestamps of all the observations
-        tstamps_no_location = time.Time(
-            [observation.tstamps for observation in observations],
-            scale="utc",
-            location=None,
-        ).sort()
+        # Remove location information from timestamps
+        tstamp_collection = [
+            observation.tstamps.copy() for observation in observations
+        ]
+        for tstamp in tstamp_collection:
+            tstamp.location = None
+
+        # Concatenate timestamps without location
+        tstamps_no_location = np.concatenate(tstamp_collection).sort()
         assert isinstance(tstamps_no_location, time.Time)
+
+        # Update combined collection of time stamps with location
         tstamps = time.Time(
             tstamps_no_location,
+            scale="utc",
             location=station.tectonic_corrected_location(tstamps_no_location),
         )
 
