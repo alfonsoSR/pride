@@ -7,9 +7,9 @@ if TYPE_CHECKING:
     from .core import Displacement
 
 DISPLACEMENT_MODELS: dict[str, type["Displacement"]] = {
-    SolidTide.name: SolidTide,
-    OceanLoading.name: OceanLoading,
-    PoleTide.name: PoleTide,
+    SolidTide.__name__: SolidTide,
+    OceanLoading.__name__: OceanLoading,
+    PoleTide.__name__: PoleTide,
 }
 
 __all__ = ["DISPLACEMENT_MODELS", "SolidTide", "OceanLoading", "PoleTide"]

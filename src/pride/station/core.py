@@ -1,14 +1,10 @@
-from typing import TYPE_CHECKING, Literal, Any
+from typing import Literal, Any
 from .. import io
 from ..logger import log
 from astropy import time, coordinates
 import numpy as np
-from .. import coordinates as coord
 from scipy import interpolate
 from datetime import datetime
-
-if TYPE_CHECKING:
-    from .experiment import Experiment
 
 
 class Station:
@@ -28,47 +24,111 @@ class Station:
         "possible_names",
         "is_phase_center",
         "is_uplink",
-        "clock_data",
+        "__clock_data",
         "has_tectonic_correction",
         "has_geophysical_corrections",
-        "exp",
-        "_ref_epoch",
-        "_ref_location",
-        "_ref_velocity",
+        "__ref_epoch",
+        "__ref_location",
+        "__ref_velocity",
         "_interp_xsta_itrf",
         "_interp_xsta_icrf",
         "_interp_vsta_itrf",
         "_interp_vsta_icrf",
     )
 
-    def __init__(self, name: str, id: str | None = None) -> None:
+    def __init__(
+        self,
+        station_name: str,
+        station_id: str,
+        is_phase_center: bool,
+        clock_parameters: tuple[datetime, float, float] | None,
+    ) -> None:
 
-        # Reference and alternative names
-        self.name = name
-        self.id: str = id if id is not None else NotImplemented
-        self.possible_names = [name]
-        alternative_names = io.load_catalog("station_names.yaml")
-        if name in alternative_names:
-            self.possible_names += alternative_names[name]
+        # Initialize station metadata
+        self.name = station_name
+        self.id = station_id
 
-        # State flags
-        self.is_phase_center = False
+        # Initialize list of possible names
+        self.possible_names = [station_name]
+        alternative_names = io.load_catalog("alternative_station_names")
+        if station_name in alternative_names:
+            self.possible_names += alternative_names[station_name]
+
+        # Initialize internal state flags
+        self.is_phase_center = is_phase_center
         self.is_uplink = False
         self.has_tectonic_correction = False
         self.has_geophysical_corrections = False
 
-        # Optional attributes
-        self.exp: "Experiment" = NotImplemented
-        self.clock_data: tuple[datetime, float, float] = NotImplemented
-        self._ref_epoch: time.Time = NotImplemented
-        self._ref_location: np.ndarray = NotImplemented
-        self._ref_velocity: np.ndarray = NotImplemented
+        # If station is phase center, set remaining attributes to None
+        if is_phase_center:
+
+            # Ensure station is GEOCENTR
+            if station_name != "GEOCENTR":
+                log.error(
+                    "Using arbitrary station as phase center is not "
+                    "supported"
+                )
+                exit(1)
+
+            self.__clock_data = None
+            self.__ref_epoch = None
+            self.__ref_location = None
+            self.__ref_velocity = None
+
+            return None
+
+        # Load clock data
+        self.__clock_data = clock_parameters
+
+        # Get reference epoch, position and velocity for the station
+        self.__ref_epoch = io.load_reference_epoch_for_station_catalog()
+        self.__ref_location = io.load_station_coordinates_from_catalog(
+            station_name
+        )
+        self.__ref_velocity = io.load_station_velocity_from_catalog(
+            station_name
+        )
+
+        # Set flag for tectonic correction
+        self.has_tectonic_correction = True
+
+        # Initialize containers for interpolators
         self._interp_xsta_itrf: interpolate.interp1d = NotImplemented
         self._interp_xsta_icrf: interpolate.interp1d = NotImplemented
         self._interp_vsta_itrf: interpolate.interp1d = NotImplemented
         self._interp_vsta_icrf: interpolate.interp1d = NotImplemented
 
         return None
+
+    @property
+    def clock_data(self) -> tuple[datetime, float, float]:
+
+        if self.__clock_data is None:
+            log.error(f"Clock data not set for {self.name} station. ")
+            exit(1)
+        return self.__clock_data
+
+    @property
+    def _ref_epoch(self) -> time.Time:
+        if self.__ref_epoch is None:
+            log.error(f"Reference epoch not set for {self.name} station. ")
+            exit(1)
+        return self.__ref_epoch
+
+    @property
+    def _ref_location(self) -> np.ndarray:
+        if self.__ref_location is None:
+            log.error(f"Reference location not set for {self.name} station. ")
+            exit(1)
+        return self.__ref_location
+
+    @property
+    def _ref_velocity(self) -> np.ndarray:
+        if self.__ref_velocity is None:
+            log.error(f"Reference velocity not set for {self.name} station. ")
+            exit(1)
+        return self.__ref_velocity
 
     def __getattribute__(self, name: str) -> Any:
 
@@ -77,48 +137,6 @@ class Station:
             log.error(f"Attribute {name} not set for {self.name} station")
             exit(1)
         return val
-
-    @staticmethod
-    def from_experiment(
-        name: str, id: str, experiment: "Experiment", uplink: bool = False
-    ) -> "Station":
-
-        station = Station(name, id)
-        setup = experiment.setup
-        station.exp = experiment
-
-        # Check if station is the phase center
-        if station.name == setup.general["phase_center"]:
-            station.is_phase_center = True
-
-            if station.name == "GEOCENTR":
-                return station
-            else:
-                raise NotImplementedError(
-                    "Using an arbitrary station as phase center is not "
-                    "supported yet"
-                )
-
-        # Check if station is uplink
-        if uplink:
-            station.is_uplink = True
-
-        # Update with clock information
-        station.clock_data = experiment.clock_parameters[station.id]
-
-        # Get reference epoch, position and velocity for the station
-        station._ref_epoch = io.load_reference_epoch_for_station_catalog()
-        station._ref_location = io.load_station_coordinates_from_catalog(
-            station.name
-        )
-        station._ref_velocity = io.load_station_velocity_from_catalog(
-            station.name
-        )
-
-        # Set flag for tectonic correction
-        station.has_tectonic_correction = True
-
-        return station
 
     def tectonic_corrected_location(
         self, epoch: "time.Time"
@@ -145,6 +163,7 @@ class Station:
         """
 
         if not self.has_tectonic_correction:
+
             if not self.is_phase_center:
                 raise NotImplementedError("Not supposed to happen")
             if not self.name == "GEOCENTR":
@@ -157,10 +176,11 @@ class Station:
             out = np.array(self.tectonic_corrected_location(epoch).geocentric).T
             match frame:
                 case "icrf":
-                    eops = self.exp.eops.at_epoch(epoch, unit="arcsec")
-                    return (
-                        coord.itrf2icrf(eops, epoch) @ out[:, :, None]
-                    ).squeeze()
+                    log.error(
+                        "The option to calculate ICRF coordinates without "
+                        "geophysical displacements is not implemented"
+                    )
+                    exit(1)
                 case "itrf":
                     return out
                 case _:

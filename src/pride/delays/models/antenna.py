@@ -4,9 +4,8 @@ from typing import TYPE_CHECKING, Any
 from ...logger import log
 from astropy import time
 import numpy as np
+from ...constants import CLIGHT
 from scipy import interpolate
-
-import spiceypy as spice
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,13 +23,6 @@ class AntennaDelays(Delay):
     - Temperature at station location (Obtained from site-specific Vienna)
     - Antenna information: Focus type, mount type, foundation height and thermal expansion coefficient and reference temperature
     """
-
-    name = "AntennaDelays"
-    etc = {
-        "url": "https://vmf.geo.tuwien.ac.at/trop_products",
-    }
-    requires_spice = False
-    station_specific = True
 
     def ensure_resources(self) -> None:
 
@@ -61,8 +53,6 @@ class AntennaDelays(Delay):
         return None
 
     def load_resources(self) -> dict[str, Any]:
-
-        log.info(f"Loading resources for {self.name} delay")
 
         resources: dict[str, tuple[io.AntennaParameters | None, Any]] = {}
         for baseline in self.exp.baselines:
@@ -114,6 +104,14 @@ class AntennaDelays(Delay):
     def calculate(self, obs: "Observation") -> Any:
         """Groups thermal deformation and antenna axis offset"""
 
+        # If atmospheric data is not available, return with zeros
+        if self.loaded_resources[obs.station.name][1] is None:
+            log.warning(
+                f"{self.name} delay set to zero for {obs.station.name}: "
+                "Missing antenna parameters"
+            )
+            return np.zeros_like(obs.tstamps.mjd)
+
         dt_axis_offset = self.calculate_axis_offset(obs)
         dt_thermal_deformation = self.calculate_thermal_deformation(obs)
 
@@ -123,15 +121,11 @@ class AntennaDelays(Delay):
 
         # Load resources
         resources = self.loaded_resources[obs.station.name]
-        if resources[1] is None:
-            log.warning(f"{self.name} delay set to zero for {obs.station.name}")
-            return np.zeros_like(obs.tstamps.jd)
 
         antenna: io.AntennaParameters = resources[0]
         assert isinstance(antenna, io.AntennaParameters)
         thermo: dict[str, Any] = resources[1]
         assert thermo is not None
-        clight = spice.clight() * 1e3
 
         # Geodetic coordinates of station
         assert obs.tstamps.location is not None  # Sanity
@@ -194,7 +188,7 @@ class AntennaDelays(Delay):
 
         # Axis offset delay
         n_air = 77.6e-6 * p / temp_k + 1.0  # Refractive index of the air
-        return -antenna.AO * np.sum(ks_uvec * ao_uvec, axis=-1) / clight * n_air
+        return -antenna.AO * np.sum(ks_uvec * ao_uvec, axis=-1) / CLIGHT * n_air
 
     @staticmethod
     def atmospheric_bending_angle(
@@ -272,9 +266,6 @@ class AntennaDelays(Delay):
         # Load resources
         resources = self.loaded_resources[obs.station.name]
         thermo: dict[str, Any] = resources[1]
-        if thermo is None:
-            log.warning(f"{self.name} delay set to zero for {obs.station.name}")
-            return np.zeros_like(obs.tstamps.jd)
 
         antenna: io.AntennaParameters = resources[0]
         assert isinstance(antenna, io.AntennaParameters)
@@ -301,7 +292,6 @@ class AntennaDelays(Delay):
         dec: np.ndarray = obs.source_dec
 
         # Calculate
-        clight = spice.clight() * 1e3
         match antenna.mount_type:
             case "MO_AZEL":
                 return (
@@ -314,7 +304,7 @@ class AntennaDelays(Delay):
                         + antenna.hv
                         - focus_factor * antenna.hs
                     )
-                ) / clight
+                ) / CLIGHT
             case "MO_EQUA":
                 return (
                     antenna.gamma_hf * dT * antenna.hf * np.sin(el)
@@ -326,7 +316,7 @@ class AntennaDelays(Delay):
                         + antenna.hv
                         - focus_factor * antenna.hs
                     )
-                ) / clight
+                ) / CLIGHT
             case "MO_XYNO" | "MO_XYEA":
                 print("using this one")
                 return (
@@ -343,7 +333,7 @@ class AntennaDelays(Delay):
                         + antenna.hv
                         - focus_factor * antenna.hs
                     )
-                ) / clight
+                ) / CLIGHT
             case "MO_RICH":  # Misplaced equatorial (RICHMOND)
 
                 # Error of the fixed axis and inclination wrt local horizon
@@ -374,7 +364,7 @@ class AntennaDelays(Delay):
                         + antenna.hv
                         - focus_factor * antenna.hs
                     )
-                ) / clight
+                ) / CLIGHT
             case _:
                 log.error(
                     f"Failed to calculate {self.name} delay for "

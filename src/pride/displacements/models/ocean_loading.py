@@ -13,13 +13,9 @@ class OceanLoading(Displacement):
     Implements the conventional model for displacements due to ocean loading as described in section 7.1.2 of the IERS Conventions 2010.
     """
 
-    name: str = "OceanLoading"
-    requires_spice: bool = False
-    model: str = "tpxo72"
-
     def ensure_resources(self) -> None:
 
-        source = io.internal_file(f"{self.model}.blq")
+        source = io.internal_catalog_path("ocean_loading")
         if not source.exists():
             log.error(
                 f"Failed to initialize {self.name} displacement: {source} not found"
@@ -28,6 +24,8 @@ class OceanLoading(Displacement):
                 "Downloading ocean loading data will be supported in the future"
             )
             exit(1)
+
+        log.debug(f"Found {source}")
 
         self._resources["source"] = source
 
@@ -84,13 +82,24 @@ class OceanLoading(Displacement):
         # Calculate ocean loading displacements
         dv, dw, ds = np.zeros((3, len(epoch)))
         for idx, ti in enumerate(epoch):
-            dv[idx], dw[idx], ds[idx] = hardisp.hardisp(
+            __value = hardisp.hardisp(
                 str(ti.isot)[:-4],  # type: ignore
                 resources["amp"],
                 resources["phs"],
                 1,
                 1,
             )
+            dv[idx] = __value[0][0]
+            dw[idx] = __value[1][0]
+            ds[idx] = __value[2][0]
+
+            # dv[idx], dw[idx], ds[idx] = hardisp.hardisp(
+            #     str(ti.isot)[:-4],  # type: ignore
+            #     resources["amp"],
+            #     resources["phs"],
+            #     1,
+            #     1,
+            # )
 
         # Convert displacements to ITRF
         disp_seu = np.array([ds, -dw, dv])

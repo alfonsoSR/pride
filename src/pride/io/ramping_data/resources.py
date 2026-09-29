@@ -1,11 +1,9 @@
-from ..resources import load_catalog, internal_file
+from ..resources import internal_catalog_path, internal_parameter
 from pathlib import Path
 from typing import Literal
 from ...logger import log
 
-FREQUENCY_RAMPING_FILES_BASE: str = load_catalog("config.yaml")["Catalogues"][
-    "frequency_ramping"
-]
+FREQUENCY_RAMPING_FILES_BASE: Path = internal_catalog_path("frequency_ramping")
 
 
 def get_path_to_ramping_data_file(
@@ -14,9 +12,9 @@ def get_path_to_ramping_data_file(
 
     match ramping_type:
         case "one-way":
-            return internal_file(f"{FREQUENCY_RAMPING_FILES_BASE}1w.{mission}")
+            return FREQUENCY_RAMPING_FILES_BASE / f"ramp1w.{mission}"
         case "three-way":
-            return internal_file(f"{FREQUENCY_RAMPING_FILES_BASE}3w.{mission}")
+            return FREQUENCY_RAMPING_FILES_BASE / f"ramp3w.{mission}"
         case _:
             log.error(f"Unknown ramping type: {ramping_type}")
             exit(1)

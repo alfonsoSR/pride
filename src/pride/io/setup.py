@@ -1,7 +1,7 @@
 import yaml
 from pathlib import Path
 from typing import Any
-from .resources import internal_file, load_catalog
+from importlib import resources
 
 
 class Setup:
@@ -19,7 +19,8 @@ class Setup:
         external = Path().home() / ".pride"
 
         # Internal configuration
-        internal_config = load_catalog("config.yaml")
+        with resources.open_text("pride.data", "config.yaml") as buffer:
+            internal_config = yaml.safe_load(buffer)
         self.catalogues: dict[str, Any] = internal_config["Catalogues"]
         self.internal: dict[str, Any] = internal_config["Configuration"]
 

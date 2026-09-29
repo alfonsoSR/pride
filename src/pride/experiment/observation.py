@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from ..source import Source
     from ..types import Band
     from .baseline import Baseline
+    from ..delays import Delay
+    from ..station.core import Station
 
 
 class Observation:
@@ -21,30 +23,29 @@ class Observation:
     :param tstamps: Collection of epochs in which the source was detected
     """
 
-    __slots__ = (
-        "source",
-        "band",
-        "obs_freq",
-        "tstamps",
-        "baseline",
-        "station",
-        "exp",
-        "icrf2itrf",
-        "seu2itrf",
-        "dot_icrf2itrf",
-        "source_az",
-        "source_el",
-        "source_ra",
-        "source_dec",
-        "tx_epochs",
-        "delays",
-        "delay_dict",
-        "has_delays",
-    )
+    # __slots__ = (
+    #     "source",
+    #     "band",
+    #     "obs_freq",
+    #     "tstamps",
+    #     "baseline",
+    #     "station",
+    #     "icrf2itrf",
+    #     "seu2itrf",
+    #     "dot_icrf2itrf",
+    #     "source_az",
+    #     "source_el",
+    #     "source_ra",
+    #     "source_dec",
+    #     "tx_epochs",
+    #     "delays",
+    #     "delay_dict",
+    #     "has_delays",
+    # )
 
     def __init__(
         self,
-        baseline: "Baseline",
+        station: "Station",
         source: "Source",
         band: "Band",
         tstamps: list[datetime.datetime],
@@ -65,14 +66,12 @@ class Observation:
         self.tstamps = time.Time(
             _tstamps,
             scale="utc",
-            location=baseline.station.tectonic_corrected_location(_tstamps),
+            location=station.tectonic_corrected_location(_tstamps),
         )
-        self.baseline = baseline
-        self.station = baseline.station
+        self.station = station
 
         # Optional properties
         self.obs_freq: "np.ndarray" = NotImplemented
-        self.exp: "Experiment" = NotImplemented
         self.icrf2itrf: "np.ndarray" = NotImplemented
         self.seu2itrf: "np.ndarray" = NotImplemented
         self.dot_icrf2itrf: "np.ndarray" = NotImplemented
@@ -95,6 +94,10 @@ class Observation:
         tstamps: list[datetime.datetime],
         experiment: "Experiment",
     ) -> "Observation":
+
+        raise DeprecationWarning(
+            "Initializing observation from experiment is deprecated"
+        )
 
         # Initialize normal observation
         observation = Observation(baseline, source, band, tstamps)
@@ -141,13 +144,16 @@ class Observation:
 
     def __getattribute__(self, name: str) -> Any:
 
+        if name == "baseline":
+            log.fatal("Accessing baseline from observation")
+
         val = super().__getattribute__(name)
         if val is NotImplemented:
             log.error(f"Attribute {name} is not set for {self.baseline.id}")
             exit(1)
         return val
 
-    def calculate_delays(self) -> None:
+    def calculate_delays(self, delay_models: list["Delay"]) -> None:
 
         if self.has_delays:
             log.error(
@@ -156,13 +162,13 @@ class Observation:
             )
             exit(1)
 
-        log.debug(
+        log.info(
             f"Calculating delays of {self.source.name} from {self.station.name}"
         )
         delay: np.ndarray = np.zeros_like(self.tstamps.jd)  # type: ignore
         self.delay_dict = {}
-        for delay_model in self.exp.delay_models:
-            val = delay_model.calculate(self)
+        for delay_model in delay_models:
+            val = delay_model.calculate_with_logging(self)
             self.delay_dict[delay_model.name] = val
             delay += val
         self.delays = delay

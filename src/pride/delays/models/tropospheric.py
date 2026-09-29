@@ -1,13 +1,12 @@
 from ..core import Delay
 from typing import TYPE_CHECKING, Any
 from ...logger import log
-import requests
 from astropy import time
 import numpy as np
 from scipy import interpolate
 from ... import utils, io
+from ...constants import CLIGHT
 from ...external import vienna
-import spiceypy as spice
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -16,16 +15,6 @@ if TYPE_CHECKING:
 
 class Tropospheric(Delay):
     """Tropospheric correction to light travel time"""
-
-    name = "Tropospheric"
-    etc = {
-        "coords_url": "https://vmf.geo.tuwien.ac.at/station_coord_files/",
-        "coeffs_url": (
-            "https://vmf.geo.tuwien.ac.at/trop_products/VLBI/V3GR/"
-            "V3GR_OP/daily/"
-        ),
-        "update_interval_hours": 6.0,  # Ignored, this was for Petrov
-    }
 
     def ensure_resources(self) -> None:
         """Check for site coordinates and site-wise tropospheric data"""
@@ -57,8 +46,6 @@ class Tropospheric(Delay):
         return None
 
     def load_resources(self) -> dict[str, dict[str, Any]]:
-
-        log.info(f"Loading resources for {self.name} delay")
 
         resources: dict[str, dict[str, Any]] = {}
         for baseline in self.exp.baselines:
@@ -101,7 +88,6 @@ class Tropospheric(Delay):
     def calculate(self, obs: "Observation") -> Any:
 
         # Initialization
-        clight = spice.clight() * 1e3
         resources = self.loaded_resources[obs.station.name]
         mjd: np.ndarray = obs.tstamps.mjd  # type: ignore
         ah: np.ndarray = resources["ah"](mjd)
@@ -142,4 +128,4 @@ class Tropospheric(Delay):
             + dw * mfw
             + mgh * (gnh * np.cos(az) + geh * np.sin(az))
             + mgw * (gnw * np.cos(az) + gew * np.sin(az))
-        ) / clight
+        ) / CLIGHT

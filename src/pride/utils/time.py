@@ -1,5 +1,7 @@
 from astropy import time
 from ..logger import log
+import numpy as np
+from .. import constants
 
 GPS_WEEK_REFERENCE = time.Time("1980-01-06T00:00:00", scale="utc")
 
@@ -83,3 +85,18 @@ def get_day_of_year_from_epoch(epoch: "time.Time") -> int:
 
     day_of_year: int = int(epoch.datetime.timetuple().tm_yday)  # type: ignore
     return day_of_year
+
+
+def get_ephemeris_time_from_epoch(epoch: "time.Time") -> np.ndarray:
+    """Calculate ephemeris time from epoch
+
+    Ephemeris time is the number of TDB seconds since J2000. This function converts an epoch to ET by converting it to TDB using Astropy, calculating the difference from J2000.tdb, and converting the difference to seconds, also using Astropy.
+
+    :para epoch: Epoch or sequence of epochs as astropy.time.Time object
+    :return: Ephemeris time as numpy array
+    """
+
+    output = (epoch.tdb - constants.J2000.tdb).to("s").value  # type: ignore
+    if not isinstance(output, np.ndarray):
+        output = np.array([output])
+    return output

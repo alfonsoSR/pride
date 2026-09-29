@@ -7,10 +7,10 @@ if TYPE_CHECKING:
     from .core import Delay
 
 DELAY_MODELS: dict[str, type["Delay"]] = {
-    Geometric.name: Geometric,
-    Tropospheric.name: Tropospheric,
-    Ionospheric.name: Ionospheric,
-    AntennaDelays.name: AntennaDelays,
+    Geometric.__name__: Geometric,
+    Tropospheric.__name__: Tropospheric,
+    Ionospheric.__name__: Ionospheric,
+    AntennaDelays.__name__: AntennaDelays,
 }
 
 __all__ = [

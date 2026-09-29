@@ -2,9 +2,8 @@ from ..core import Displacement
 from typing import Any
 import numpy as np
 from astropy import time
-import spiceypy as spice
-from ...constants import J2000
 from ...external.iers import dehanttideinel
+from ... import astro, utils
 
 
 class SolidTide(Displacement):
@@ -12,9 +11,6 @@ class SolidTide(Displacement):
 
     Implements the conventional model for displacements due to solid Earth tides induced by the Sun and the Moon as described in section 7.1.1 of the IERS Conventions 2010.
     """
-
-    name: str = "SolidTide"
-    requires_spice: bool = True
 
     def ensure_resources(self) -> None:
         return None
@@ -24,14 +20,9 @@ class SolidTide(Displacement):
     ) -> dict[str, Any]:
 
         # Position of the Sun and Moon in Earth-centered ICRF
-        et: np.ndarray = (epoch.tdb - J2000.tdb).sec  # type: ignore
-        xsun_icrf = (
-            np.array(spice.spkpos("sun", et, "J2000", "NONE", "earth")[0]) * 1e3
-        )
-        xmoon_icrf = (
-            np.array(spice.spkpos("moon", et, "J2000", "NONE", "earth")[0])
-            * 1e3
-        )
+        et = utils.get_ephemeris_time_from_epoch(epoch)
+        xsun_icrf = astro.get_gcrf_position_vector("sun", et)
+        xmoon_icrf = astro.get_gcrf_position_vector("moon", et)
 
         # Convert position of the Sun and Moon to ITRF
         resources = {
