@@ -1,8 +1,8 @@
 from astropy import time
 import numpy as np
-from ..constants import CLIGHT
-from .. import utils
-from . import ephemerides, relativity
+from ...constants import CLIGHT
+from ... import utils
+from .. import ephemerides, relativity
 
 
 def light_time_from_rx_epoch(
