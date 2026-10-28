@@ -90,6 +90,12 @@ class EOP:
         return None
 
     def __eops(self, mjds) -> np.ndarray:
+        """EOPs from the table at given MJDs (linear interpolation)
+
+        :param mjds: Modified Julian Dates
+        :return: EOPs as a (5, N) array in the order UT1-UTC [s], X, Y, dX, dY
+        [arcsec], as expected by `at_epoch`
+        """
 
         if np.any(mjds < self.__mjd_range[0]) or np.any(
             mjds > self.__mjd_range[1]
@@ -99,9 +105,9 @@ class EOP:
 
         return np.array(
             [
+                self.__eops_dict["ut1_utc"](mjds),
                 self.__eops_dict["xp"](mjds),
                 self.__eops_dict["yp"](mjds),
-                self.__eops_dict["ut1_utc"](mjds),
                 self.__eops_dict["dx"](mjds),
                 self.__eops_dict["dy"](mjds),
             ]
@@ -181,11 +187,16 @@ class EOP:
 def seu2itrf(lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
     """Rotation matrix from SEU to ITRF
 
+    The local South-East-Up frame is obtained from ITRF by a rotation of -lon about
+    the z axis followed by a rotation of -(pi/2 - lat) (minus the colatitude) about
+    the y axis. (Before 2026-10-07 the latitude was used instead of the colatitude,
+    which is only correct at 45° latitude.)
+
     :param lat: Geodetic latitude in radians
     :param lon: Geodetic longitude in radians
     :return: Rotation matrix from SEU to ITRF as (N, 3, 3) array
     """
-    return erfa.rz(-lon, erfa.ry(-lat, np.eye(3)))
+    return erfa.rz(-lon, erfa.ry(-(0.5 * np.pi - lat), np.eye(3)))
 
 
 def icrf2itrf(eops: np.ndarray, epoch: "time.Time") -> np.ndarray:

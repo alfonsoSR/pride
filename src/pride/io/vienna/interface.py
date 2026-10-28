@@ -62,6 +62,15 @@ class V3GRInterface:
     def read_v3gr_data_for_station(self, station_name: str) -> list[float]:
         """Read V3GR data for a specific station
 
+        Returns the following items, in SI units:
+        1. Modified Julian Date
+        2. Hydrostatic and wet mapping function coefficients (ah, aw)
+        3. Zenith hydrostatic and wet delays (zhd, zwd) [m]
+        4. Hydrostatic and wet north and east gradients (gnh, geh, gnw, gew) [m]
+
+        The gradients are given in millimetres in the V3GR files and are
+        converted to metres.
+
         :param station_name: Name of the station
         :return site_data: List of coefficients for the station
         """
@@ -72,7 +81,7 @@ class V3GRInterface:
         # Extract MJD and coefficients from line
         line_contents = station_line.split()
         coefficients = [float(x) for x in line_contents[1:6]] + [
-            float(x) for x in line_contents[9:]
+            float(x) * 1e-3 for x in line_contents[9:]  # Gradients: mm -> m
         ]
         return coefficients
 

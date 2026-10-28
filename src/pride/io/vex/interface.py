@@ -12,12 +12,22 @@ VEX_DATE_FORMAT = "%Yy%jd%Hh%Mm%Ss"
 
 @dataclass
 class ScanData:
+    """Data structure for scan information
+
+    :param source_type: Type of the source ("target" or "calibrator")
+    :param source_name: Internal name of the source (short name of the experiment target for scans of the target)
+    :param observation_mode: Observation mode of the scan
+    :param initial_epoch: Start of the scan (UTC)
+    :param offsets_per_station: Initial and final offsets [s] from the start of the scan for each station, in the order of the VEX file
+    :param vex_source_name: Name of the source as written in the VEX file (set by `Vex.load_single_scan_data`; empty by default)
+    """
 
     source_type: str
     source_name: str
     observation_mode: str
     initial_epoch: datetime.datetime
     offsets_per_station: dict[str, tuple[int, int]]
+    vex_source_name: str = ""
 
 
 @dataclass
@@ -353,4 +363,5 @@ class Vex:
             observation_mode,
             initial_epoch,
             offsets_per_station,
+            source_data.name,
         )

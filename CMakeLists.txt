@@ -21,7 +21,11 @@ fortran_extension(${IERS_SOURCE_DIR}/eops external/iers)
 fortran_extension(${IERS_SOURCE_DIR}/hardisp external/iers)
 fortran_extension(${VIENNA_SOURCE_DIR}/vmf3 external/vienna)
 
-install(
-    DIRECTORY ${PRIDE_SOURCE_DIR}
-    DESTINATION .
-)
+# Editable installs import the package (and the extensions, built in place)
+# from src/, so the copy is only needed for regular wheels
+if(NOT SKBUILD_STATE STREQUAL "editable")
+  install(
+      DIRECTORY ${PRIDE_SOURCE_DIR}
+      DESTINATION .
+  )
+endif()

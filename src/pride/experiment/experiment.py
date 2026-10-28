@@ -16,11 +16,15 @@ from .baseline import Baseline
 from .observation import Observation
 import numpy as np
 from .. import utils
-from ..io.vex.interface import VEX_DATE_FORMAT
 
 if TYPE_CHECKING:
     from ..displacements.core import Displacement
     from ..delays.core import Delay
+    from ..doppler import DopplerPredictor
+
+
+SCAN_LIMITS_TOLERANCE: float = 1e-6
+"""Tolerance when selecting the epochs of a scan in the .del output [s]"""
 
 
 class Experiment:
@@ -32,7 +36,7 @@ class Experiment:
         _setup_path = Path(setup).absolute()
         if not _setup_path.is_file():
             log.error(
-                f"Failed to initialize {self.name} experiment: "
+                "Failed to initialize experiment: "
                 f"Configuration file {_setup_path} not found"
             )
             exit(1)
@@ -96,6 +100,11 @@ class Experiment:
         log.info(f"Experiment {self.name} successfully initialized")
 
         return None
+
+    @property
+    def vex(self) -> "io.Vex":
+        """Interface to the VEX file of the experiment"""
+        return self.__vex
 
     def __ensure_spice_kernels(self, target: str) -> Path:
         """Ensure SPICE kernels are available for the target
@@ -262,6 +271,8 @@ class Experiment:
                     initial_offset,
                     final_offset,
                     scan_id,
+                    self.setup.general.get("scan_step"),
+                    self.setup.general.get("force_scan_step", False),
                 )
 
                 # If station is not in dictionaries, add it
@@ -328,6 +339,10 @@ class Experiment:
         experiment_baselines: list["Baseline"] = []
         for station_id in observation_bands:
 
+            # Skip stations in the list of ignored stations
+            if station_id not in stations_dictionary:
+                continue
+
             # Initialize container with observations for this station
             station_observations: list["Observation"] = []
 
@@ -379,7 +394,11 @@ class Experiment:
 
         return None
 
-    def save_output(self) -> None:
+    def save_output(self, doppler: "DopplerPredictor | None" = None) -> None:
+        """Write one .del file per station
+
+        :param doppler: Doppler predictions of the experiment. If given, the Doppler phase of the scans of the target is written in the .del files (see `DopplerPredictor.doppler_phase`); otherwise, the phase is set to zero.
+        """
 
         log.warning("The save_output method should be refactored!")
 
@@ -414,51 +433,42 @@ class Experiment:
         # sorted_scans = sorted([s for s in self.vex["SCHED"]])
         for scan_id in sorted_scans:
 
-            _scan_data = self.__vex.load_single_scan_data(
+            # Scan data from the VEX file. The source name is the internal ID
+            # (short name of the target for scans of the target), and the
+            # stations are in the order of the VEX file
+            scan_data = self.__vex.load_single_scan_data(
                 scan_id, self.target["short_name"]
             )
+            scan_source = scan_data.source_name
+            scan_stations = list(scan_data.offsets_per_station.keys())
 
-            _stations = list(_scan_data.offsets_per_station.keys())
-
-            # IDs of stations involved in scan
-            scan_data = self.__vex._Vex__content["SCHED"][scan_id].getall(
-                "station"
-            )
-            scan_stations = [s[0] for s in scan_data]
-            assert scan_stations == _stations  # Sanity check
-
-            # VEX-file and internal ID of source
-            _scan_sources = [
-                self.__vex._Vex__content["SCHED"][scan_id]["source"]
-            ]
-            if len(_scan_sources) != 1:
-                log.error(f"Scan {scan_id} has multiple sources")
-                exit(1)
-            scan_source_id = _scan_sources[0]  # ID from VEX file
-
-            _source_data = self.__vex._Vex__content["SOURCE"][scan_source_id]
-            if _source_data["source_type"] == "target":
-                scan_source = self.target["short_name"]  # Internal ID
-            else:
-                scan_source = scan_source_id  # Internal ID
-            assert scan_source == _scan_data.source_name  # Sanity check
+            # Reference epoch of the scan
+            scan_start = time.Time(scan_data.initial_epoch, scale="utc")
 
             # Loop over stations in scan
             for station_id in scan_stations:
+
+                # Skip stations in the list of ignored stations
+                if station_id in self.setup.general["ignore_stations"]:
+                    continue
 
                 # Get observation for this scan
                 assert (station_id, scan_source) in observations  # Sanity
                 observation = observations[(station_id, scan_source)]
 
-                # Initial and final epochs for scan
-                t0 = time.Time.strptime(
-                    self.__vex._Vex__content["SCHED"][scan_id]["start"],
-                    VEX_DATE_FORMAT,
+                # Initial and final epochs of the scan for this station
+                # NOTE: Widened by a small tolerance, since epochs that are
+                # equal to the scan limits can differ from them by ~1e-11 s
+                # after the time arithmetic
+                initial_offset, final_offset = scan_data.offsets_per_station[
+                    station_id
+                ]
+                t0 = scan_start + time.TimeDelta(
+                    initial_offset - SCAN_LIMITS_TOLERANCE, format="sec"
                 )
-                dt = time.TimeDelta(
-                    int(scan_data[0][2].split()[0]), format="sec"
+                tend = scan_start + time.TimeDelta(
+                    final_offset + SCAN_LIMITS_TOLERANCE, format="sec"
                 )
-                tend = t0 + dt
 
                 # Timestamps and delays of current scan
                 scan_mask = (observation.tstamps >= t0) & (
@@ -466,6 +476,17 @@ class Experiment:
                 )
                 scan_tstamps = observation.tstamps[scan_mask]
                 scan_delays = observation.delays[scan_mask]
+                if observation.has_uvw:
+                    scan_u, scan_v, scan_w = observation.uvw[scan_mask].T
+                else:
+                    scan_u = scan_v = scan_w = np.zeros_like(scan_delays)
+
+                # Doppler phase [Only for the target]
+                scan_phase = None
+                if doppler is not None and scan_source == self.target["short_name"]:
+                    scan_phase = doppler.doppler_phase(station_id, scan_tstamps)
+                if scan_phase is None:
+                    scan_phase = np.zeros_like(scan_delays)
 
                 # Get integral part of MJD
                 _mjd = np.array(scan_tstamps.mjd, dtype=int)  # type: ignore
@@ -477,15 +498,22 @@ class Experiment:
                 mjd2 = (mjd_diff + _mjd2).to("s").value  # type: ignore
 
                 # Write data to output file
-                # NOTE: Current version of the program does not include
-                # Doppler shifts or UVW projections. These entries are set
-                # to zero (to 1 for the amplitude of the Doppler shift)
+                # NOTE: UVW projections and Doppler phase are set to zero if
+                # not calculated. The Doppler amplitude is always set to 1.
                 zero = np.zeros_like(mjd2)
                 data = np.array(
-                    [mjd2, zero, zero, zero, scan_delays, zero, zero + 1.0]
+                    [
+                        mjd2,
+                        scan_u,
+                        scan_v,
+                        scan_w,
+                        scan_delays,
+                        scan_phase,
+                        zero + 1.0,
+                    ]
                 ).T
                 output_files[station_id].add_scan(
-                    scan_id, scan_source_id, mjd1, data
+                    scan_id, scan_data.vex_source_name, mjd1, data
                 )
 
         return None

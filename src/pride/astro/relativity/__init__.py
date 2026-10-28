@@ -4,5 +4,6 @@ from .gravitational_effects import (
 )
 from .lorentz_transformations import (
     transform_position_from_gcrf_to_bcrf,
+    transform_velocity_from_gcrf_to_bcrf,
     transform_position_from_bcrf_to_gcrf,
 )

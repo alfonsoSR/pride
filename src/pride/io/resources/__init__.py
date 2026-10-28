@@ -1,4 +1,4 @@
-from .internal_configuration import (
+from ...internal_configuration import (
     internal_parameter,
     internal_catalog_path,
 )

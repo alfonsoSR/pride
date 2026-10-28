@@ -58,51 +58,64 @@ class AntennaDelays(Delay):
         for baseline in self.exp.baselines:
 
             # Skip if resources are already available for this station
-            station = baseline.station
-            if station in resources:
+            station_name = baseline.station.name
+            if station_name in resources:
                 continue
 
-            # Load antenna parameters from catalog
-            antenna_parameters = io.AntennaParameters.from_catalog_missing_ok(
-                station.name
-            )
-
-            # If antenna parameters are not available, skip this station
-            if antenna_parameters is None:
-                resources[station.name] = (None, None)
-                continue
-
-            # Load atmospheric data from site-specific Vienna files
-            mjd, pressure, temperature, water_vapor_pressure = np.array(
-                [
-                    io.V3GRInterface(
-                        source
-                    ).read_atmospheric_conditions_at_station(station.name)
-                    for source in self.resources["coverage"].values()
-                ]
-            ).T
-
-            # Calculate humidity
-            humidity = self.humidity_model(temperature, water_vapor_pressure)
-
-            # Generate interpolators for atmospheric data
-            interp_type = "linear" if len(mjd) <= 3 else "cubic"
-            atmospheric_interpolators = {
-                "p": interpolate.interp1d(mjd, pressure, kind=interp_type),
-                "TC": interpolate.interp1d(mjd, temperature, kind=interp_type),
-                "hum": interpolate.interp1d(mjd, humidity, kind=interp_type),
-            }
-
-            # Add station to resources
-            resources[station.name] = (
-                antenna_parameters,
-                atmospheric_interpolators,
-            )
+            resources[station_name] = self.load_station_resources(station_name)
 
         return resources
 
+    def load_station_resources(
+        self, station_name: str
+    ) -> tuple[io.AntennaParameters | None, Any]:
+        """Load antenna parameters and atmospheric data for a station
+
+        :param station_name: Name of the station
+        :return: Antenna parameters and interpolators for atmospheric data, or (None, None) if the antenna parameters are not available
+        """
+
+        # Load antenna parameters from catalog
+        antenna_parameters = io.AntennaParameters.from_catalog_missing_ok(
+            station_name
+        )
+
+        # If antenna parameters are not available, skip this station
+        if antenna_parameters is None:
+            return None, None
+
+        # Load atmospheric data from site-specific Vienna files
+        mjd, pressure, temperature, water_vapor_pressure = np.array(
+            [
+                io.V3GRInterface(source).read_atmospheric_conditions_at_station(
+                    station_name
+                )
+                for source in self.resources["coverage"].values()
+            ]
+        ).T
+
+        # Calculate humidity
+        humidity = self.humidity_model(temperature, water_vapor_pressure)
+
+        # Generate interpolators for atmospheric data
+        interp_type = "linear" if len(mjd) <= 3 else "cubic"
+        atmospheric_interpolators = {
+            "p": interpolate.interp1d(mjd, pressure, kind=interp_type),
+            "TC": interpolate.interp1d(mjd, temperature, kind=interp_type),
+            "hum": interpolate.interp1d(mjd, humidity, kind=interp_type),
+        }
+
+        return antenna_parameters, atmospheric_interpolators
+
     def calculate(self, obs: "Observation") -> Any:
         """Groups thermal deformation and antenna axis offset"""
+
+        # Load resources for stations that are not part of the experiment
+        # (e.g. uplink stations of a three-way Doppler link)
+        if obs.station.name not in self.loaded_resources:
+            self.loaded_resources[obs.station.name] = (
+                self.load_station_resources(obs.station.name)
+            )
 
         # If atmospheric data is not available, return with zeros
         if self.loaded_resources[obs.station.name][1] is None:
@@ -318,7 +331,6 @@ class AntennaDelays(Delay):
                     )
                 ) / CLIGHT
             case "MO_XYNO" | "MO_XYEA":
-                print("using this one")
                 return (
                     antenna.gamma_hf * dT * antenna.hf * np.sin(el)
                     + antenna.gamma_hp

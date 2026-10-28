@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any
 import datetime
 from astropy import time
 from ..logger import log
+from .. import uvw
 import numpy as np
 
 if TYPE_CHECKING:
@@ -83,6 +84,8 @@ class Observation:
         self.delays: "np.ndarray" = NotImplemented
         self.delay_dict: "dict" = NotImplemented
         self.has_delays: bool = False
+        self.uvw: "np.ndarray" = NotImplemented
+        self.has_uvw: bool = False
 
         return None
 
@@ -149,7 +152,10 @@ class Observation:
 
         val = super().__getattribute__(name)
         if val is NotImplemented:
-            log.error(f"Attribute {name} is not set for {self.baseline.id}")
+            log.error(
+                f"Attribute {name} is not set for observation of "
+                f"{self.source.name} from {self.station.name}"
+            )
             exit(1)
         return val
 
@@ -175,3 +181,48 @@ class Observation:
         self.has_delays = True
 
         return None
+
+    def calculate_uvw(
+        self, method: str, delay_models: list["Delay"]
+    ) -> None:
+        """Calculate UVW projections of the baseline
+
+        :param method: Method to use: "numerical" (derivatives of the geometric delay) or "analytic" (projection of the baseline vector)
+        :param delay_models: Delay models of the experiment. The numerical method requires the Geometric model.
+        """
+
+        if self.has_uvw:
+            log.error(
+                "Attempted to calculate UVW projections twice for observation "
+                f"of {self.source.name} from {self.station.name}"
+            )
+            exit(1)
+
+        log.info(
+            f"Calculating UVW projections ({method}) of {self.source.name} "
+            f"from {self.station.name}"
+        )
+
+        match method:
+            case "numerical":
+                geometric = [m for m in delay_models if m.name == "Geometric"]
+                if len(geometric) == 0:
+                    log.error(
+                        "Failed to calculate UVW projections: The numerical "
+                        "method requires the Geometric delay"
+                    )
+                    exit(1)
+                self.uvw = uvw.calculate_uvw_numerical(self, geometric[0])  # type: ignore
+            case "analytic":
+                self.uvw = uvw.calculate_uvw_analytic(self)
+            case _:
+                log.error(
+                    f"Failed to calculate UVW projections: Invalid method "
+                    f"{method}. Valid options are {list(uvw.UVW_METHODS)}"
+                )
+                exit(1)
+
+        self.has_uvw = True
+
+        return None
+

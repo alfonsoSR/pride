@@ -1,7 +1,14 @@
+"""Access to the internal configuration of pride (src/pride/data/config.yaml)
+
+Kept at the top level of the package, with no dependencies on other pride modules
+except the logger, so that both `io` and `utils` can import it without a circular
+import. `io` re-exports `internal_parameter` and `internal_catalog_path`.
+"""
+
 from importlib import resources
 from pathlib import Path
 import yaml
-from ...logger import log
+from .logger import log
 
 
 def internal_parameter(parameter: str):

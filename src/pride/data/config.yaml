@@ -40,7 +40,3 @@ Configuration:
   lt_max_iterations: 6
   # Target precision for relativistic LT corrections
   lt_precision: 1e-15
-  # Turnaround ratio for three-way communication link
-  # NOTE: From DSN Telecommunications Link Design Handbook (201, Rev. B)
-  # NOTE: This value is only valid when uplink and downlink are in X band
-  tr_ratio: 1.1748998664886516

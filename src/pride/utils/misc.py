@@ -2,7 +2,7 @@ import numpy as np
 from astropy import units
 import datetime
 from ..logger import log
-from .. import io
+from ..internal_configuration import internal_parameter
 import math
 from typing import Sequence, Callable, Any
 from scipy import interpolate
@@ -42,6 +42,8 @@ def discretize_scan(
     initial_offset: int,
     final_offset: int,
     scan_id: str = "",
+    scan_step: float | None = None,
+    force_scan_step: bool = False,
 ) -> list[datetime.datetime]:
     """Discretize a scan using internal constraints
 
@@ -60,6 +62,11 @@ def discretize_scan(
     :param initial_offset: Initial offset of the scan
     :param final_offset: Final offset of the scan
     :param scan_id: ID of the scan (for logging purposes)
+    :param scan_step: Step size [s] replacing the default step size of the
+    internal configuration. If not given, the default is used.
+    :param force_scan_step: Use `scan_step` exactly, ignoring the minimum number
+    of observations per scan and the minimum step size. The scan is discretized
+    from its start, every `scan_step` seconds, up to its end.
     :return discretized_time_range: List of datetime objects representing the
     discretized time range for the scan
     """
@@ -77,13 +84,32 @@ def discretize_scan(
 
     # Calculate the scan duration and a tentative step size
     scan_duration: int = final_offset - initial_offset
-    min_extra_points: int = int(io.internal_parameter("min_obs_per_scan")) - 1
+
+    # Use the requested step size exactly
+    if force_scan_step:
+        if scan_step is None or scan_step <= 0.0:
+            log.error(
+                f"Failed to discretize scan {scan_id}: "
+                f"Invalid forced step size {scan_step}"
+            )
+            exit(1)
+        n_steps = math.floor(scan_duration / scan_step + 1e-9)
+        return [
+            initial_epoch + datetime.timedelta(seconds=scan_step * i)
+            for i in range(n_steps + 1)
+        ]
+
+    min_extra_points: int = int(internal_parameter("min_obs_per_scan")) - 1
     tentative_step: float = scan_duration / min_extra_points
 
     # Calculate number of extra points based on internal constraints
     # Number of observation is number of extra points + 1 (beginning)
-    default_scan_step: float = float(io.internal_parameter("default_scan_step"))
-    min_scan_step: float = float(io.internal_parameter("min_scan_step"))
+    default_scan_step: float = (
+        float(internal_parameter("default_scan_step"))
+        if scan_step is None
+        else scan_step
+    )
+    min_scan_step: float = float(internal_parameter("min_scan_step"))
     if tentative_step > default_scan_step:
 
         number_of_extra_points = math.ceil(scan_duration / default_scan_step)

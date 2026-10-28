@@ -1,4 +1,4 @@
-from .internal_configuration import internal_catalog_path
+from ...internal_configuration import internal_catalog_path
 from typing import Any
 import yaml
 

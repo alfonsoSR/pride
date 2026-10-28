@@ -1,20 +1,22 @@
 from ..core import Delay
 from typing import TYPE_CHECKING, Any
 from ...logger import log
-from astropy import time, coordinates
+from astropy import time
 from ftplib import FTP_TLS
 import unlzw3
 import gzip
 import numpy as np
 from scipy import interpolate
-from ... import io, utils
+from ... import astro, io, utils
 
 if TYPE_CHECKING:
     from pathlib import Path
     from ...experiment.observation import Observation
+    from ...station.core import Station
 
 
-TURNAROUND_RATIO = io.internal_parameter("tr_ratio")
+DEFAULT_THREE_WAY_BANDS: tuple[str, str] = ("X", "X")
+"""Uplink and downlink bands of three-way links if not set in the Doppler section"""
 
 
 class Ionospheric(Delay):
@@ -25,6 +27,39 @@ class Ionospheric(Delay):
     - BRIEF DESCRIPTION OF THE MODEL AND SOURCE
     - DESCRIPTION OF REQUIRED RESOURCES AND KEYS
     """
+
+    def three_way_turnaround_ratio(self) -> float:
+        """Turnaround ratio of the three-way link of the near-field target
+
+        The uplink and downlink bands are read from the Doppler section of the configuration file (uplink_band, downlink_band), so that the delays and the Doppler predictions use the same link. If they are not set, an X/X link is assumed.
+
+        :return: Ratio of downlink and uplink frequencies
+        """
+
+        if "turnaround_ratio" in self.loaded_resources:
+            return self.loaded_resources["turnaround_ratio"]
+
+        doppler_setup = self.exp.setup.doppler
+        if "uplink_band" in doppler_setup and "downlink_band" in doppler_setup:
+            bands = (doppler_setup["uplink_band"], doppler_setup["downlink_band"])
+        else:
+            bands = DEFAULT_THREE_WAY_BANDS
+            log.warning(
+                "Uplink and downlink bands not set in the Doppler section: "
+                f"Assuming {bands[0]}/{bands[1]} three-way link for the "
+                "ionospheric delay"
+            )
+
+        ratio = astro.get_turnaround_ratio(*bands)
+        if ratio is None:
+            log.error(
+                "Failed to calculate ionospheric delay: Turnaround ratio not "
+                f"available for {bands[0]}/{bands[1]} uplink/downlink bands"
+            )
+            exit(1)
+
+        self.loaded_resources["turnaround_ratio"] = ratio
+        return ratio
 
     def ensure_resources(self) -> None:
 
@@ -108,31 +143,14 @@ class Ionospheric(Delay):
         # Group TEC epochs into single time.Time object
         tec_epochs = time.Time(list(tec_grid_interpolators.keys()))
 
+        # Keep TEC maps to load stations that are not part of the experiment
+        self.tec_epochs = tec_epochs
+        self.tec_grid_interpolators = tec_grid_interpolators
+
         # Generate a 1D TEC interpolator for each station
         for baseline in self.exp.baselines:
-
-            # Station latitude and longitude for each coverage epoch
-            # TODO: REPLACE WITH GEOCENTRIC COORDINATES!!
-            coords = coordinates.EarthLocation(
-                *baseline.station.location(tec_epochs, frame="itrf").T,
-                unit="m",
-            ).to_geodetic("GRS80")
-            station_latitudes: np.ndarray = coords.lat.deg  # type: ignore
-            station_longitudes: np.ndarray = coords.lon.deg  # type: ignore
-
-            # Get TEC at station coordinates for each epoch in coverage
-            station_local_tec: list[float] = [
-                float(tec_interpolator([lon, lat])[0])
-                for tec_interpolator, lon, lat in zip(
-                    tec_grid_interpolators.values(),
-                    station_longitudes,
-                    station_latitudes,
-                )
-            ]
-
-            # Interpolate local TEC as function of time
-            resources[baseline.station.name] = interpolate.interp1d(
-                tec_epochs.mjd, station_local_tec, kind="cubic"
+            resources[baseline.station.name] = self.load_station_resources(
+                baseline.station
             )
 
             # # Generate a 1D interpolator with the TEC at station coordinates
@@ -146,7 +164,58 @@ class Ionospheric(Delay):
 
         return resources
 
-    def calculate(self, obs: "Observation") -> Any:
+    def load_station_resources(self, station: "Station") -> Any:
+        """Interpolator of the vertical TEC at a station as function of MJD
+
+        The station coordinates are corrected for tectonic motion only (the TEC maps
+        do not require a better accuracy). This also works for stations whose
+        position interpolators only cover a short time interval.
+
+        :param station: Station object
+        :return: Interpolator of the vertical TEC [0.1 TECU] at the station
+        """
+
+        tec_epochs = self.tec_epochs
+
+        # Station latitude and longitude for each coverage epoch
+        # TODO: REPLACE WITH GEOCENTRIC COORDINATES!!
+        coords = station.tectonic_corrected_location(tec_epochs).to_geodetic(
+            "GRS80"
+        )
+        station_latitudes: np.ndarray = coords.lat.deg  # type: ignore
+        station_longitudes: np.ndarray = coords.lon.deg  # type: ignore
+
+        # Get TEC at station coordinates for each epoch in coverage
+        station_local_tec: list[float] = [
+            float(tec_interpolator([lon, lat])[0])
+            for tec_interpolator, lon, lat in zip(
+                self.tec_grid_interpolators.values(),
+                station_longitudes,
+                station_latitudes,
+            )
+        ]
+
+        # Interpolate local TEC as function of time
+        return interpolate.interp1d(
+            tec_epochs.mjd, station_local_tec, kind="cubic"
+        )
+
+    def calculate(
+        self, obs: "Observation", frequency: np.ndarray | None = None
+    ) -> Any:
+        """Ionospheric group delay [s]
+
+        :param obs: Observation
+        :param frequency: Frequency of the signal at each epoch [Hz]. If not given, it is determined from the observation band (far-field sources) or from the frequency ramping tables (near-field sources), as before. Used by the Doppler predictions to evaluate the delay at the uplink and downlink frequencies of each leg.
+        :return: Ionospheric group delay at the observation epochs [s]
+        """
+
+        # Load resources for stations that are not part of the experiment
+        # (e.g. uplink stations of a three-way Doppler link)
+        if obs.station.name not in self.loaded_resources:
+            self.loaded_resources[obs.station.name] = (
+                self.load_station_resources(obs.station)
+            )
 
         # Get vertical TEC from station at observation epochs
         vtec = self.loaded_resources[obs.station.name](obs.tstamps.mjd)
@@ -158,6 +227,12 @@ class Ionospheric(Delay):
         # NOTE: Using model from Petrov (based on original code)
         zenith = np.arcsin(np.cos(obs.source_el) / (1.0 + (h_ref / r_earth)))
         tec = 0.1 * vtec / np.cos(zenith)
+
+        # Frequency given by the caller
+        if frequency is not None:
+            freq = np.asarray(frequency, dtype=float)
+            assert freq.shape == tec.shape  # Sanity
+            return 5.308018e10 * tec / (4.0 * np.pi**2 * freq * freq)
 
         # Get frequency of the detected signal
         freq = np.zeros_like(obs.tstamps.jd)
@@ -184,7 +259,7 @@ class Ionospheric(Delay):
                 df0 = np.sum(np.where(mask_3way, three_way["df"], 0), axis=1)
                 t0 = np.sum(np.where(mask_3way, three_way["t0"].jd, 0), axis=1)
                 dt = time.TimeDelta(uplink_tx.jd - t0, format="jd").to("s").value  # type: ignore
-                freq += (f0 + df0 * dt) * TURNAROUND_RATIO
+                freq += (f0 + df0 * dt) * self.three_way_turnaround_ratio()
 
                 # Check for lack of coverage
                 holes = np.sum(mask_3way, axis=1) == 0

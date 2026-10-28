@@ -149,11 +149,15 @@ class Geometric(Delay):
         )
 
     def calculate_nearfield_sekido_fukushima(
-        self, obs: "Observation"
+        self, obs: "Observation", xsrc_bcrf_tx: np.ndarray | None = None
     ) -> np.ndarray:
         """Calculate geometric delay for a near-field source
 
         NOTE: This function assumes that the phase center is the geocenter.
+
+        :param obs: Observation of a near-field source
+        :param xsrc_bcrf_tx: BCRF position of the source at the TX epochs (N, 3). If not given, it is read from the SPICE kernels. Used to evaluate the delay for a displaced source (e.g. to compute UVW projections).
+        :return: Geometric delay in TT scale (N,)
         """
 
         log.warning(
@@ -172,7 +176,10 @@ class Geometric(Delay):
 
         # Calculate BCRF position of source at TX epoch
         et_tx = utils.get_ephemeris_time_from_epoch(tx)
-        xsrc_bcrf_tx = astro.get_icrf_position_vector(source.spice_id, et_tx)
+        if xsrc_bcrf_tx is None:
+            xsrc_bcrf_tx = astro.get_icrf_position_vector(
+                source.spice_id, et_tx
+            )
 
         # Retrieve GCRF position of station
         xsta_gcrf_rx1 = obs.station.location(obs.tstamps, frame="icrf")
@@ -254,10 +261,16 @@ class Geometric(Delay):
             post_newtonian_effects,
         )
 
-    def calculate_farfield(self, obs: "Observation") -> np.ndarray:
+    def calculate_farfield(
+        self, obs: "Observation", ks: np.ndarray | None = None
+    ) -> np.ndarray:
         """Calculate geometric delay for a far-field source
 
         Calculates the geometric delay using the consensus model for far-field sources, described in section 11 of the IERS Conventions 2010.
+
+        :param obs: Observation of a far-field source
+        :param ks: Unit vector pointing to the source (3,). If not given, the observed pointing vector of the source is used. Used to evaluate the delay for a displaced source (e.g. to compute UVW projections).
+        :return: Geometric delay in TT scale (N,)
         """
 
         # Sanity
@@ -309,7 +322,8 @@ class Geometric(Delay):
         xbodies_sta_bcrf_rx = xbodies_bcrf_rx - xsta_bcrf_rx
 
         # Estimate time of closest approach to planets
-        ks = obs.source.observed_ks  # Pointing vector
+        if ks is None:
+            ks = obs.source.observed_ks  # Pointing vector
         et_planets = (
             et_rx
             - np.sum(ks[None, None, :] * xbodies_sta_bcrf_rx, axis=-1) / CLIGHT

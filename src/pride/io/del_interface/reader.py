@@ -11,12 +11,19 @@ class DelFileInterface:
 
     The SFXC correlator reads estimated delays from binary files with .del extension. This class provides an interface to load information from DEL files.
 
+    Two layouts are supported, and detected from the size of the header:
+    - Current (written by pride): each scan starts with a scan ID and a source name.
+    - Legacy (written by pypride): header size of 3 bytes (station ID and a null byte), and each scan starts with the source name only. Scans read from a legacy file have an empty scan ID.
+
     :param file: Path to the DEL file
     :param max_size_id: Maximum allowed size of an ID (scan, source...)
     """
 
     max_size_id: int = 80
     """Maximum allowed size of an ID: scan, source..."""
+
+    legacy_header_size: int = 3
+    """Header size of DEL files in the legacy (pypride) layout, without scan IDs"""
 
     def __init__(self, file: str | Path) -> None:
         """Constructor for DelFileInterface class
@@ -73,15 +80,20 @@ class DelFileInterface:
         )
         assert isinstance(station_id, str)
 
+        # Legacy layout: scans without scan ID
+        legacy = header_size == self.legacy_header_size
+
         # Loop over scan section and read data
         scans_list: list[ScanData] = []
         while current_byte < self.buffer_size:
 
             # Read scan ID
-            (scan_id,), current_byte = utils.peek_buffer(
-                self.buffer, f"<{self.max_size_id}sx", current_byte
-            )
-            assert isinstance(scan_id, str)
+            scan_id = ""
+            if not legacy:
+                (scan_id,), current_byte = utils.peek_buffer(
+                    self.buffer, f"<{self.max_size_id}sx", current_byte
+                )
+                assert isinstance(scan_id, str)
 
             # Read source name
             (source_name,), current_byte = utils.peek_buffer(

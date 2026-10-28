@@ -57,13 +57,19 @@ class PoleTide(Displacement):
         m1, m2 = (resources["eops"][1:3] - p_mean.T) * np.array([[1.0], [-1.0]])
 
         # Calculate pole tide displacements in SEU system
+        # IERS 2010 eq. 7.26 is written with the colatitude theta = pi/2 - lat:
+        # S_theta (south) = -9 cos(2 theta) (...) = +9 cos(2 lat) (...)
+        # S_lambda (east) = 9 cos(theta) (...) = 9 sin(lat) (...)
+        # S_r (up) = -33 sin(2 theta) (...) = -33 sin(2 lat) (...)
+        # (Before 2026-10-07 the latitude was used in place of the colatitude in the
+        # south and east components.)
         lat, lon = resources["lat"], resources["lon"]
         cospsin = m1 * np.cos(lon) + m2 * np.sin(lon)
         sinmcos = m1 * np.sin(lon) - m2 * np.cos(lon)
         disp_seu = np.array(
             [
-                -9e-3 * np.cos(2.0 * lat) * cospsin,
-                9e-3 * np.cos(lat) * sinmcos,
+                9e-3 * np.cos(2.0 * lat) * cospsin,
+                9e-3 * np.sin(lat) * sinmcos,
                 -33e-3 * np.sin(2.0 * lat) * cospsin,
             ]
         ).T

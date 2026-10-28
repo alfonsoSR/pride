@@ -9,6 +9,7 @@ from .relativity import (
     post_newtonian_near_field_effect,
     post_newtonian_near_field_delay,
     transform_position_from_gcrf_to_bcrf,
+    transform_velocity_from_gcrf_to_bcrf,
     transform_position_from_bcrf_to_gcrf,
 )
 from .gravitation import (
@@ -21,10 +22,13 @@ from .light_propagation import (
     light_time_from_rx_epoch,
     calculate_duev_near_field_delay,
     calculate_sekido_fukushima_near_field_delay,
+    calculate_frequency_ratio,
+    get_turnaround_ratio,
 )
 
 __all__ = [
     "transform_position_from_gcrf_to_bcrf",
+    "transform_velocity_from_gcrf_to_bcrf",
     "transform_position_from_bcrf_to_gcrf",
     "get_icrf_state_vector",
     "get_icrf_position_vector",
@@ -39,4 +43,6 @@ __all__ = [
     "calculate_newtonian_potential_from_bcrf_positions",
     "light_time_from_rx_epoch",
     "light_time_from_tx_epoch",
+    "calculate_frequency_ratio",
+    "get_turnaround_ratio",
 ]

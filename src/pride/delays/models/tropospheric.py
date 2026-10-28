@@ -55,37 +55,53 @@ class Tropospheric(Delay):
             if station.name in resources:
                 continue
 
-            # Read site-wise tropospheric data
-            _site_data = []
-            for source in self.resources["coverage"].values():
-
-                # Initialize V3GR interface for source file
-                v3gr_interface = io.V3GRInterface(source)
-
-                # Extract coefficients for station
-                station_coefficients = (
-                    v3gr_interface.read_v3gr_data_for_station(station.name)
-                )
-                _site_data.append(station_coefficients)
-
-            data = np.array(_site_data).T
-
-            # Interpolate coefficients
-            mjd, ah, aw, dh, dw, gnh, geh, gnw, gew = data
-            resources[station.name] = {
-                "ah": interpolate.interp1d(mjd, ah, kind="linear"),
-                "aw": interpolate.interp1d(mjd, aw, kind="linear"),
-                "dh": interpolate.interp1d(mjd, dh, kind="linear"),
-                "dw": interpolate.interp1d(mjd, dw, kind="linear"),
-                "gnh": interpolate.interp1d(mjd, gnh, kind="linear"),
-                "geh": interpolate.interp1d(mjd, geh, kind="linear"),
-                "gnw": interpolate.interp1d(mjd, gnw, kind="linear"),
-                "gew": interpolate.interp1d(mjd, gew, kind="linear"),
-            }
+            resources[station.name] = self.load_station_resources(station.name)
 
         return resources
 
+    def load_station_resources(self, station_name: str) -> dict[str, Any]:
+        """Load site-wise tropospheric data (V3GR) for a station
+
+        :param station_name: Name of the station
+        :return: Interpolators of the V3GR coefficients as functions of MJD
+        """
+
+        # Read site-wise tropospheric data
+        _site_data = []
+        for source in self.resources["coverage"].values():
+
+            # Initialize V3GR interface for source file
+            v3gr_interface = io.V3GRInterface(source)
+
+            # Extract coefficients for station
+            station_coefficients = v3gr_interface.read_v3gr_data_for_station(
+                station_name
+            )
+            _site_data.append(station_coefficients)
+
+        data = np.array(_site_data).T
+
+        # Interpolate coefficients
+        mjd, ah, aw, dh, dw, gnh, geh, gnw, gew = data
+        return {
+            "ah": interpolate.interp1d(mjd, ah, kind="linear"),
+            "aw": interpolate.interp1d(mjd, aw, kind="linear"),
+            "dh": interpolate.interp1d(mjd, dh, kind="linear"),
+            "dw": interpolate.interp1d(mjd, dw, kind="linear"),
+            "gnh": interpolate.interp1d(mjd, gnh, kind="linear"),
+            "geh": interpolate.interp1d(mjd, geh, kind="linear"),
+            "gnw": interpolate.interp1d(mjd, gnw, kind="linear"),
+            "gew": interpolate.interp1d(mjd, gew, kind="linear"),
+        }
+
     def calculate(self, obs: "Observation") -> Any:
+
+        # Load resources for stations that are not part of the experiment
+        # (e.g. uplink stations of a three-way Doppler link)
+        if obs.station.name not in self.loaded_resources:
+            self.loaded_resources[obs.station.name] = (
+                self.load_station_resources(obs.station.name)
+            )
 
         # Initialization
         resources = self.loaded_resources[obs.station.name]

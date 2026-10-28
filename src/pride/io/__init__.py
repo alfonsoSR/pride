@@ -8,6 +8,7 @@ from .del_interface import (
     ScanData,
     DelFileInterface,
 )
+from .doppler_interface import write_doppler_file
 from .ramping_data import load_ramping_data, get_path_to_ramping_data_file
 from .station_catalogs import (
     load_station_coordinates_from_catalog,
@@ -32,6 +33,7 @@ __all__ = [
     "DelContents",
     "ScanData",
     "DelFileInterface",
+    "write_doppler_file",
     "load_ramping_data",
     "get_path_to_ramping_data_file",
     "load_station_coordinates_from_catalog",

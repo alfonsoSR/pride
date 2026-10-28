@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from astropy import coordinates, time
+from astropy import time
 import numpy as np
 import spiceypy as spice
 from ..constants import J2000, CLIGHT
@@ -42,30 +42,6 @@ class FarFieldSource(Source):
     def from_experiment(exp: "Experiment", name: str) -> "Source":
 
         raise NotImplementedError("This method is deprecated")
-
-        # Initialize source
-        source = FarFieldSource(name)
-
-        # Read coordinates from VEX file
-        source_info = exp._Experiment__vex._Vex__content["SOURCE"][name]
-        _coords = coordinates.SkyCoord(
-            source_info["ra"], source_info["dec"], frame="icrs"
-        )
-        _ra = float(_coords.ra.to("rad").value)  # type: ignore
-        _dec = float(_coords.dec.to("rad").value)  # type: ignore
-        source.observed_ra = _ra
-        source.observed_dec = _dec
-
-        # Calculate pointing vector
-        source.observed_ks = np.array(
-            [
-                np.cos(_ra) * np.cos(_dec),
-                np.sin(_ra) * np.cos(_dec),
-                np.sin(_dec),
-            ]
-        )
-
-        return source
 
     def spherical_coordinates(
         self, obs: "Observation"

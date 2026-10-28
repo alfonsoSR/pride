@@ -9,12 +9,14 @@ def __data_is_in_time_interval(
     data_t0: str,
     data_tend: str,
     time_interval: tuple[time.Time, time.Time] | None,
+    scale: str = "utc",
 ) -> tuple[bool, bool]:
     """Check if a line falls within the desired time interval
 
     :param data_t0: Beginning of coverage for the data in the line
     :param data_tend: End of coverage for the data in the line
     :param time_interval: Beginning and end of interval of interest
+    :param scale: Time scale of the epochs in the line
     :return line_in_interval: Whether the data in the line is valid for the requested interval
     :return is_after_interval: Whether the line contains data for moments that
     are after the end of the interval. This is used to stop reading the file
@@ -26,8 +28,8 @@ def __data_is_in_time_interval(
         return True, False
 
     # Convert limits of coverage to astropy Time objects
-    t0: time.Time = time.Time(data_t0)
-    tend: time.Time = time.Time(data_tend)
+    t0: time.Time = time.Time(data_t0, scale=scale)
+    tend: time.Time = time.Time(data_tend, scale=scale)
 
     # Check if line coverage ends before start of the interval
     if tend < time_interval[0]:
@@ -45,6 +47,7 @@ def load_ramping_data(
     ramping_file: Path,
     ramping_type: Literal["one-way", "three-way"],
     time_interval: tuple[time.Time, time.Time] | None = None,
+    scale: str = "utc",
 ) -> dict[str, time.Time | np.ndarray | str] | None:
     """Load frequency ramping data from source file
 
@@ -55,6 +58,8 @@ def load_ramping_data(
     :param ramping_type: Whether the file contains one-way or three-way data.
     :param time_interval: Time interval from which data is wanted. If not set,
     the whole content of the source file will be loaded.
+    :param scale: Time scale of the epochs in the source file (e.g. "utc" for
+    three-way ramping tables, "tdb" for one-way ramping tables of ESA missions)
     :return ramping_data: A dictionary containing the ramping data between
     specified epochs. For one-way ramping, the dictionary contains a Time object
     with the beginning of coverage for each line (t0), a Time object with the
@@ -99,7 +104,7 @@ def load_ramping_data(
             line_t0_string: str = "T".join(line_content[:2])
             line_tend_string: str = "T".join(line_content[2:4])
             line_in_interval, should_stop_reading = __data_is_in_time_interval(
-                line_t0_string, line_tend_string, time_interval
+                line_t0_string, line_tend_string, time_interval, scale
             )
             if not line_in_interval:
                 if should_stop_reading:
@@ -121,8 +126,8 @@ def load_ramping_data(
 
     # Turn lists into dictionary
     ramping_data: dict = {
-        "t0": time.Time(coverage_start),
-        "t1": time.Time(coverage_end),
+        "t0": time.Time(coverage_start, scale=scale),
+        "t1": time.Time(coverage_end, scale=scale),
         "f0": np.array(reference_frequencies),
         "df": np.array(frequency_ramping),
     }
